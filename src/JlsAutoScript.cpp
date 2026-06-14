@@ -1468,7 +1468,7 @@ void JlsAutoScript::subCutTRSetCut(Term &term){
 			if (cont){
 				//--- 15秒単位からずれがない所を探す ---
 				Msec msec_dif_target = term.msec.ed - preterm.msec.st;
-				Msec msec_gap = ((msec_dif_target + 7500) % 15000) - 7500;
+				Msec msec_gap = abs(((msec_dif_target + 7500) % 15000) - 7500);
 				if (msec_dif_target > prm_msec_wcomp_trmax + mgn_cm_detect){	// 60秒を超えたら終了
 					cont = false;
 				}

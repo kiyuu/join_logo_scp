@@ -696,6 +696,30 @@ int CnvStrTime::getStrPosChar(const string &cstr, char chsel, bool expand, int p
 	return possel;
 }
 //---------------------------------------------------------------------
+// 文字列から .. による範囲指定を含む整数を取得して文字列として返す（複数ある場合は全部）
+// 取得できなかった時は返り値がマイナスになるが、正常終了ならdstが空、異常なら文字列が入る
+//---------------------------------------------------------------------
+int CnvStrTime::getStrMultiNumAll(string& dst, const string& cstr, int pos) {
+	string cstrIn = cstr;
+	int posHold = getStrMultiNum(dst, cstrIn, pos);
+	int posNext = posHold;
+	while ( posNext >= 0 ) {
+		posHold = posNext;
+		string strVal;
+		posNext = getStrMultiNum(strVal, cstrIn, posHold);
+		bool exist = !strVal.empty();
+		if (posNext >= 0) {
+			if ( exist ) {
+				dst += "," + strVal;
+			}
+		} else {
+			if (exist) posHold = posNext;
+		}
+		
+	}
+	return posHold;
+}
+//---------------------------------------------------------------------
 // 文字列から .. による範囲指定を含む整数を取得して文字列として返す
 // 取得できなかった時は返り値がマイナスになるが、正常終了ならdstが空、異常なら文字列が入る
 //---------------------------------------------------------------------
@@ -754,17 +778,17 @@ bool CnvStrTime::isStrMultiNumIn(const string &cstr, int curNum, int maxNum){
 		if ( pos < 0 ) break;
 
 		int rloc = (int)strVal.find("..");
-		if ( rloc == (int)string::npos ){		// 通常の数値
+		if (strVal == "odd") {
+			if (curNum % 2 == 1) {
+				exist = true;
+			}
+		}else if (strVal == "even") {
+			if (curNum % 2 == 0) {
+				exist = true;
+			}
+		}else if ( rloc == (int)string::npos ){		// 通常の数値
 			int val = stoi(strVal);
 			if ( (val == 0) || (val == curNum) || (maxNum + val + 1 == curNum) ){
-				exist = true;
-			}
-		}else if ( strVal == "odd" ){
-			if ( curNum % 2 == 1 ){
-				exist = true;
-			}
-		}else if ( strVal == "even" ){
-			if ( curNum % 2 == 0 ){
 				exist = true;
 			}
 		}else{								// 範囲指定
@@ -903,7 +927,7 @@ int CnvStrTime::getMbStrSizeUtf8(const string& str, int n){
 //--- n文字目がマルチバイトで2番目以降の文字であればtrueを返す ---
 bool CnvStrTime::isStrMbSecond(const string& str, int n){
 	if ( n >= (int)str.length() ) return false;	// 異常を除く
-	std::mblen(nullptr, 0);		// 変換状態をリセット
+	//std::mblen(nullptr, 0);		// 変換状態をリセット
 	int i = 0;
 	while( i<n && i>=0 ){
 		int mbsize = getMbStrSize(str, i);

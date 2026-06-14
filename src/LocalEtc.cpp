@@ -18,6 +18,7 @@
 
 #if defined(LOCALETC_USE_ICONV_SJIS)
 #include <iconv.h>
+#include <cstring>
 #endif
 
 using namespace std;
@@ -754,6 +755,10 @@ string LocalEtcCore::LocalStr::getRegMatch(const string& strSrc, const string& s
 	}
 	return strRet;
 }
+//--- UTF8ならそのまま、Shift-JisだったらUTF8にして文字列を返す ---
+string LocalEtcCore::LocalStr::getUtf8String(const string& strSrc) {
+	return wbc.getUtf8String(strSrc);;
+}
 
 
 //---------------------------------------------------------------------
@@ -995,6 +1000,15 @@ string LocalEtcCore::LocalWbCnv::cnvToFileString(const string& ustr, LcParam::Ut
 	}
 	string lstr;
 	return lstr;
+}
+
+//--- UTF8ならそのまま、Shift-JisだったらUTF8にして文字列を返す ---
+string LocalEtcCore::LocalWbCnv::getUtf8String(const string& strSrc) {
+	string strRet = strSrc;
+	if (isCodeOkAsSjis(strSrc) && !isCodeOkAsUtf8(strSrc)) {
+		strRet = getUtf8FromSjis(strSrc);
+	}
+	return strRet;
 }
 
 //---------------------------------------------------------------------

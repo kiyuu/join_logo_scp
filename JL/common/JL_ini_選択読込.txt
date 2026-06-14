@@ -129,6 +129,9 @@ Function getIniInfoMatch( ref(result) id abbr title fname ){
     ReadLine -RegOut str_read -local
     Break !${READVALID}
     SplitCsv -RegArg str_read -RegOut list_csv -local
+    If $#list_csv<2     # 項目ない時のエラー回避用
+      ListDim 2 -RegOut list_csv -val "#"    # 項目なければ先頭#で無効化
+    EndIf
     Fcall getIniInfoMatchItem1( list_csv[1] id abbr ) -RegOut m1 -local
 #    Fcall getIniInfoMatchItem2( list_csv[2] title ) -RegOut m2 -local
     Fcall StrCmpItemWithRegExp( list_csv[2] title ) -RegOut m2 -local

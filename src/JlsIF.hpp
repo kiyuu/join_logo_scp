@@ -15,6 +15,7 @@ class JlsIF
 {
 private:
 	const char* ChapterStrStill = (char *) u8"＿";	// chapter_exeのマーク（画像変化なしマーク）
+	const char* ChapterStrStillAscii = (char *) "_";  // chapter_exeのマーク（画像変化なしマーク）
 
 	//--- シーンチェンジと構成区切り用（入力データ） ---
 	struct DataScpIF {

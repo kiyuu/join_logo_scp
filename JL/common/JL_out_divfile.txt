@@ -50,3 +50,10 @@ MemSet OUTPUT {                 # 出力時自動的に実行
     DivFile S 0 -fromabs ${divfile_output_list[$num]}
   EndRepeat
 };
+
+#--- 標準出力に結果出力 ---
+MemSet OUTPUT {                 # 出力時自動的に実行
+  EchoItem "join_logo_scp [分割位置 - 開始]"
+  MemCall divfile_echo_odiv
+  EchoItem "join_logo_scp [分割位置 - 終了]"
+};

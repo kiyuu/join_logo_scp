@@ -28,19 +28,19 @@ int JlsIF::start(int argc, char *argv[]) {
 		ret = runScript();			// 実行
 	}
 	catch(std::bad_alloc& e){
-		lcout << "error:bad_alloc" << e.what() << endl;
+		lcout << "error:bad_alloc " << LStr.getUtf8String(e.what()) << endl;
 		return 3;
 	}
 	catch(std::runtime_error& e){
-		lcout << "error:runtime_error" << e.what() << endl;
+		lcout << "error:runtime_error " << LStr.getUtf8String(e.what()) << endl;
 		return 3;
 	}
 	catch(std::logic_error& e){
-		lcout << "error:logic_error" << e.what() << endl;
+		lcout << "error:logic_error " << LStr.getUtf8String(e.what()) << endl;
 		return 3;
 	}
 	catch(std::exception& e){
-		lcout << "error:exception at c++ class" << e.what() << endl;
+		lcout << "error:exception at c++ class " << LStr.getUtf8String(e.what()) << endl;
 		return 3;
 	}
 	catch(...){
@@ -254,7 +254,7 @@ int JlsIF::expandArgOne(JlsScript &funcScript, int argrest, const char* strv, co
 			numarg = 1;
 		}
 		else if (isStrCaseSame(strv, "-ver")){
-			lcout << "join_logo_scp ver5.1" << endl;
+			lcout << "join_logo_scp ver5.1.1" << endl;
 			return GETONE_EXIT;
 		}
 		else if (isStrCaseSame(strv, "-F")){
@@ -511,6 +511,9 @@ int JlsIF::readScpos(const string &fname){
 				}
 				// シーンチェンジ変化情報
 				n2 = (int) strBuf.find(ChapterStrStill);	// マーク検出（"＿"）
+				if (n2 < 0 || n2 >= n){
+					n2 = (int) strBuf.find(ChapterStrStillAscii);	// マーク検出（"_"）
+				}
 				if (n2 >= 0 && n2 < n){			// マークがSCPos:より前
 					dtscp.still = 1;			// シーンチェンジ変化なしフラグ付加
 				}

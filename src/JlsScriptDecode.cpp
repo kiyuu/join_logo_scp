@@ -1102,6 +1102,9 @@ void JlsScriptDecode::setCmdTackOpt(JlsCmdArg& cmdarg){
 				ignabort = true;
 			}
 		}
+		if (cmdsel == CmdType::DivFile) {
+			ignabort = true;
+		}
 		cmdarg.tack.ignoreAbort = ignabort;
 	}
 	//--- ロゴ確定状態でも実行するコマンド ---
@@ -1459,7 +1462,7 @@ bool JlsScriptDecode::convertStringValue(string& strVal, ConvStrType typeVal){
 			}
 			break;
 		case ConvStrType::NumR :
-			pos = pdata->cnv.getStrMultiNum(strVal, strVal, 0);
+			pos = pdata->cnv.getStrMultiNumAll(strVal, strVal, 0);
 			break;
 		default:
 			break;

@@ -259,7 +259,9 @@ void JlsScriptLimit::getLogoListStd(JlsCmdSet& cmdset){
 				curFall ++;
 			}
 			if ( pdata->isClogoMsecExist(msecNow, edgeNow) == false ){
-				continue;		// 出力にないロゴは使用しない
+				if (!cmdset.arg.tack.ignoreAbort) {  // Abort無視する時は除外
+					continue;		// 出力にないロゴは使用しない
+				}
 			}
 			if ( (edgeNow == LOGO_EDGE_RISE) && isLogoEdgeRise(edgeSel) ){	// riseエッジ確認
 				if ( isLogoListStdNumUse(curRise, maxRise) ){
@@ -893,7 +895,9 @@ bool JlsScriptLimit::getBaseLogo(JlsCmdSet& cmdset, int nlist){
 	wmsecTg.late  = msecBsrc;
 	LogoEdgeType edgeTg = edgeBase;
 	bool flagBase = ( msecBsrc == msecBorg );
-	getBaseLogoForTg(wmsecTg, edgeTg, cmdset, flagBase);	// オプション等による補正
+	if (pdata->isClogoMsecExist(msecBsrc, edgeBase) || !cmdset.arg.tack.ignoreAbort) {  // Abort地点除く
+		getBaseLogoForTg(wmsecTg, edgeTg, cmdset, flagBase);	// オプション等による補正
+	}
 	if ( wmsecTg.late < 0 ){
 		return false;	// 無効位置確認
 	}

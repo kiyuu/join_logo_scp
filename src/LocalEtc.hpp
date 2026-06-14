@@ -287,6 +287,7 @@ namespace LocalEtcCore
 		bool        replaceInStr(std::string& strSrc, const std::string& strEach, const std::string& strSub);
 		int         countRegExMatch(const std::string& strSrc, const std::string& strRe);
 		std::string getRegMatch(const std::string& strSrc, const std::string& strRe);
+		std::string getUtf8String(const std::string& strSrc);
 	};
 	//---------------------------------------------------------------------
 	// UTF-8 - 他形式 文字列変換処理
@@ -323,6 +324,9 @@ namespace LocalEtcCore
 		//--- ファイルIO - UTF-8 文字コード変換処理 ---
 		std::string cnvFromFileString(const std::string& lstr, LcParam::UtfType utype);
 		std::string cnvToFileString(const std::string& ustr, LcParam::UtfType utype);
+
+		//--- UTF-8 文字列化 ---
+		std::string getUtf8String(const std::string& strSrc);
 
 		//--- wstring/u32 - UTF-8 文字列変換処理 ---
 		int  getWlenFromUtf8(const std::string& str, bool force16 = false);

@@ -142,7 +142,8 @@ public:
 	int getStrPosComment(const string &cstr, int pos);
 	int getStrPosReplaceVar(const string &cstr, int pos);
 	int getStrPosChar(const string &cstr, char chsel, bool expand, int pos);
-	int getStrMultiNum(string &dst, const string &cstr, int pos);
+	int getStrMultiNumAll(string &dst, const string &cstr, int pos);
+	int getStrMultiNum(string& dst, const string& cstr, int pos);
 	bool isStrMultiNumIn(const string &cstr, int numCur, int numMax);
 	//--- 時間を文字列（フレームまたはミリ秒）に変換 ---
 	string getStringMsecM1(Msec msec_val);

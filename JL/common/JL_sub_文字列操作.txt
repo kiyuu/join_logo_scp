@@ -79,7 +79,23 @@ Function StrCmpWordWithRegExp( strWord strData ){
 };
 
 #
-# 検索用として文字は半角大文字に変換、記号は全角
+# 検索用として英数文字は半角大文字に変換
+#
+Function StrConvToHanUp( ref(strData) ){
+  SetReg EXTCHAR  StrDefZenAlpU -local   # 全角大文字を変換する
+  SetReg EXTCHSUB StrDefHanAlpU -local   # 変換先（半角大文字）
+  Set strData "${strData:Xi}"
+  SetReg EXTCHAR  StrDefZenAlpL  # 全角小文字を変換する
+  Set strData "${strData:Xi}"
+  SetReg EXTCHAR  StrDefHanAlpL  # 半角小文字を変換する
+  Set strData "${strData:Xi}"
+  SetReg EXTCHAR  StrDefZenNum   # 全角数字を変換する
+  SetReg EXTCHSUB StrDefHanNum   # 変換先
+  Set strData "${strData:Xi}"
+};
+
+#
+# 検索用として英数文字は半角大文字に変換、記号は全角
 #
 Function StrConvToHanUpSymZen( ref(strData) ){
   SetReg EXTCHAR  StrDefZenAlpU -local   # 全角大文字を変換する
@@ -110,8 +126,8 @@ Function StrConvToHanUpSymZen( ref(strData) ){
 #   返り値 ：1=すべて含まれている 0=それ以外
 #
 Function StrCmpEveryItemAnd( strItem strData ){
-  Fcall StrConvToHanUpSymZen( strItem )   # 検索項目を半角大文字に統一
-  Fcall StrConvToHanUpSymZen( strData )   # データを半角大文字に統一
+  Fcall StrConvToHanUpSymZen( strItem )   # 検索項目の半角全角を統一
+  Fcall StrConvToHanUpSymZen( strData )   # データの半角全角を統一
   SplitItem -RegArg strItem -RegOut listItem -local
   LocalSet match 1
   Repeat $#{listItem} -counter i 1 {    # 各項目それぞれ確認
@@ -138,9 +154,14 @@ Function StrCmpItemWithRegExp( strItem strData ){
     Set ci_rgex ${strItem:Ci}      # 正規表現が含まれているか確認
   };
   If ${ci_rgex}>0 {      # 正規表現扱い文字が含まれている場合
+    Fcall StrConvToHanUp( strItem )   # 検索項目の英数文字を半角大文字に統一
     Set EXTCHAR "${strItem}" -local
-    Fcall StrConvToHanUpSymZen( strData )   # データを半角大文字に統一
+    Fcall StrConvToHanUp( strData )   # データの英数文字を半角大文字に統一
     If ${strData:Cm}>0 { Set match 1 };   # 正規表現で条件に合うか確認
+    If ${match}==0 {                          # 合わなかった場合は
+      Fcall StrConvToHanUpSymZen( strData )   # データの記号を全角に統一
+      If ${strData:Cm}>0 { Set match 1 };   # 正規表現で条件に合うか確認
+    };
   }ElsIf ${match}==0 {      # 空白区切りの検索項目として条件に合うか確認
     Fcall StrCmpEveryItemAnd( strItem strData ) -RegOut match
   };

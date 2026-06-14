@@ -222,6 +222,7 @@ const vector<JlScrCmdCalcRecord> CmdCalcDefine = {
 	{ CmdType::OldAdjust,  1, ConvStrType::Num     },
 	{ CmdType::IgnoreCase, 1, ConvStrType::Num     },
 	{ CmdType::SysMesDisp, 1, ConvStrType::Num     },
+	{ CmdType::SysMesUtf,  1, ConvStrType::Num     },
 	{ CmdType::SysMemoSel, 1, ConvStrType::Num     },
 	{ CmdType::EvalFrame,  2, ConvStrType::Frame   },
 	{ CmdType::EvalTime,   2, ConvStrType::Time    },

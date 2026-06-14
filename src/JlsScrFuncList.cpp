@@ -310,7 +310,7 @@ bool JlsScrFuncList::setListStrRep(string& strList, const string& strItem, int n
 //--- リスト内の指定番号（範囲指定可能）のみ選択 ---
 bool JlsScrFuncList::setListStrSel(string& strList, const string& strNumMulti){
 	string strNum;
-	if ( pdata->cnv.getStrMultiNum(strNum, strNumMulti, 0) < 0 ){
+	if ( pdata->cnv.getStrMultiNumAll(strNum, strNumMulti, 0) < 0 ){
 		return false;		// 異常指定の確認
 	}
 	int numMax = getListStrSize(strList);	// 項目数取得
@@ -325,7 +325,7 @@ bool JlsScrFuncList::setListStrSel(string& strList, const string& strNumMulti){
 	}
 	//--- 結果格納 ---
 	setListStrClear(strList);
-	for(auto i=0; i<(int)strList.size(); i++){
+	for(auto i=0; i<(int)listResult.size(); i++){
 		setListStrIns(strList, listResult[i], -1);
 	}
 	return true;
