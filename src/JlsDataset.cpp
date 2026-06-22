@@ -5,6 +5,7 @@
 //#include "stdafx.h"
 #include "CommonJls.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
 
 //=====================================================================
 // 初期設定
@@ -174,6 +175,10 @@ void JlsDataset::backupLogosetLoad(){
 void JlsDataset::setConfig(ConfigVarType tp, int val){
 	int nTp = static_cast<int>(tp);
 	m_config[nTp] = val;
+	if (tp == ConfigVarType::LogoRevise){
+		FILE*f=fopen("C:\\Users\\yuuki\\AppData\\Local\\Temp\\jls_debug2.log","a");
+		if(f){fprintf(f,"setConfig LogoRevise=%d\n",val);fclose(f);}
+	}
 }
 
 //---------------------------------------------------------------------
@@ -191,6 +196,7 @@ int JlsDataset::getConfigAction(ConfigActType acttp){
 		case ConfigActType::LogoDelEdge:		// ロゴ端のCM判断
 			val = getConfig(ConfigVarType::LogoRevise);
 			ret = val % 10;
+			{ static bool once = false; if(!once){ once=true; FILE*f=fopen("C:\\Users\\yuuki\\AppData\\Local\\Temp\\jls_debug2.log","w"); if(f){fprintf(f,"LogoRevise=%d LogoDelEdge=%d\n",val,ret);fclose(f);} } }
 			break;
 		case ConfigActType::LogoDelMid:			// ロゴ内の15秒単位CM化
 			val = getConfig(ConfigVarType::LogoRevise);
