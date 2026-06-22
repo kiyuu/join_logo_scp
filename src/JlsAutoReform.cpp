@@ -12,6 +12,11 @@
 #include "JlsCmdSet.hpp"
 #include "JlsDataset.hpp"
 #include <cstdio>
+static FILE* dbgfp = nullptr;
+static void dbg_open(){
+	if (!dbgfp) dbgfp = fopen("C:\\Users\\yuuki\\AppData\\Local\\Temp\\jls_debug.log", "w");
+}
+#define DBG(...) do{ dbg_open(); if(dbgfp){ fprintf(dbgfp, __VA_ARGS__); fflush(dbgfp); } }while(0)
 
 
 //=====================================================================
@@ -3245,29 +3250,29 @@ bool JlsAutoReform::setCMFormDetect(Msec &msec_stpoint, Nsc nsc_base, RangeWideM
 			Nsc nsc_near = pdata->getNscFromMsecChap(msec_align, pdata->msecValLap2, SCP_CHAP_CDET);
 			Nsc nsc_chk  = pdata->getNscFromMsecChap(msec_align, pdata->msecValLap2, SCP_CHAP_DFORCE);
 			//--- 終了条件判定 ---
-			fprintf(stderr, "[DBG] setCMFormDetect: base=%d i=%d msec_base=%d msec_i=%d sec_dif15=%d sec_difend=%d chap_i=%d\n",
+			DBG("[DBG] setCMFormDetect: base=%d i=%d msec_base=%d msec_i=%d sec_dif15=%d sec_difend=%d chap_i=%d\n",
 				(int)nsc_base, (int)i, (int)msec_base, (int)msec_i, (int)sec_dif15, (int)sec_difend, (int)chap_i);
 			if (sec_dif15 > 120){
 				fin = true;
-				fprintf(stderr, "[DBG]   -> fin=true (>120)\n");
+				DBG("[DBG]   -> fin=true (>120)\n");
 			}
 			else if (sec_dif15 > sec_difend && sec_difend > 0){
 				Msec msec_align_chk = msec_base - (sec_dif15 * 1000);
 				Nsc nsc_chk_cont = pdata->getNscFromMsecChap(msec_align_chk, pdata->msecValLap2, SCP_CHAP_CDET);
-				fprintf(stderr, "[DBG]   sec_difend exceeded: msec_align_chk=%d nsc_chk_cont=%d\n",
+				DBG("[DBG]   sec_difend exceeded: msec_align_chk=%d nsc_chk_cont=%d\n",
 					(int)msec_align_chk, (int)nsc_chk_cont);
 				if (nsc_chk_cont < 0){
 					fin = true;
-					fprintf(stderr, "[DBG]   -> fin=true (no CDET at aligned pos)\n");
+					DBG("[DBG]   -> fin=true (no CDET at aligned pos)\n");
 				}
 				else{
 					Sec sec_logo_chk = pdata->getSecLogoComponent(msec_i, msec_base);
 					Sec sec_span = pdata->cnv.getSecFromMsec(msec_base - msec_i);
-					fprintf(stderr, "[DBG]   logo_guard: sec_logo_chk=%d sec_span=%d\n",
+					DBG("[DBG]   logo_guard: sec_logo_chk=%d sec_span=%d\n",
 						(int)sec_logo_chk, (int)sec_span);
 					if (sec_logo_chk > sec_span / 2){
 						fin = true;
-						fprintf(stderr, "[DBG]   -> fin=true (logo > half)\n");
+						DBG("[DBG]   -> fin=true (logo > half)\n");
 					}
 				}
 			}
@@ -3547,11 +3552,11 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 	//--- ロゴ構成区間内の15秒構成をCM化する処理 ---
 	int rev_del_edge = pdata->getConfigAction(ConfigActType::LogoDelEdge);
 	//--- 開始位置の補正 ---
-	fprintf(stderr, "[DBG] setCMFormByLogo: fixSt=%d bounds.st=%d cmscope.st.just=%d early=%d late=%d\n",
+	DBG("[DBG] setCMFormByLogo: fixSt=%d bounds.st=%d cmscope.st.just=%d early=%d late=%d\n",
 		(int)cmscope.fixSt, (int)bounds.st, (int)cmscope.st.just, (int)cmscope.st.early, (int)cmscope.st.late);
 	if (cmscope.fixSt == false && bounds.st > 0 && cmscope.st.just > 0){
 		int msec_limit = setCMFormByLogoLimit(bounds.st, SEARCH_DIR_PREV);
-		fprintf(stderr, "[DBG]   msec_limit=%d cond1=%d cond2=%d\n",
+		DBG("[DBG]   msec_limit=%d cond1=%d cond2=%d\n",
 			(int)msec_limit, (int)(bounds.st > msec_limit), (int)(bounds.st > cmscope.st.just));
 		if (bounds.st > msec_limit || msec_limit < 0){
 			if (bounds.st > cmscope.st.just){
@@ -3563,10 +3568,10 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 				form.msecLogoSide = cmscope.st.early;
 				form.revDelEdge   = rev_del_edge;
 				form.dr           = SEARCH_DIR_PREV;
-				fprintf(stderr, "[DBG]   calling setCMFormByLogoAdd: msecTarget=%d msecCmSide=%d msecLogoSide=%d revDelEdge=%d\n",
+				DBG("[DBG]   calling setCMFormByLogoAdd: msecTarget=%d msecCmSide=%d msecLogoSide=%d revDelEdge=%d\n",
 					(int)form.msecTarget, (int)form.msecCmSide, (int)form.msecLogoSide, (int)form.revDelEdge);
 				int det_tmp = setCMFormByLogoAdd(bounds.st, form);
-				fprintf(stderr, "[DBG]   setCMFormByLogoAdd returned: det_tmp=%d bounds.st=%d\n", det_tmp, (int)bounds.st);
+				DBG("[DBG]   setCMFormByLogoAdd returned: det_tmp=%d bounds.st=%d\n", det_tmp, (int)bounds.st);
 				if (det_tmp) det = true;
 			}
 		}
@@ -3672,10 +3677,10 @@ int JlsAutoReform::setCMFormByLogoLimit(Msec msec_point, SearchDirType dr){
 bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 	Nsc nsc_point = pdata->getNscFromMsecChap(
 						msec_result, pdata->msecValNear2, SCP_CHAP_DFIX);
-	fprintf(stderr, "[DBG] setCMFormByLogoAdd: msec_result=%d nsc_point=%d revDelEdge=%d\n",
+	DBG("[DBG] setCMFormByLogoAdd: msec_result=%d nsc_point=%d revDelEdge=%d\n",
 		(int)msec_result, (int)nsc_point, (int)form.revDelEdge);
 	if (nsc_point < 0 || form.revDelEdge <= 1){	// 追加しない条件
-		fprintf(stderr, "[DBG]   early return (nsc_point=%d revDelEdge=%d)\n", (int)nsc_point, (int)form.revDelEdge);
+		DBG("[DBG]   early return (nsc_point=%d revDelEdge=%d)\n", (int)nsc_point, (int)form.revDelEdge);
 		return 0;
 	}
 	//--- 検索方向 ---
@@ -3709,7 +3714,7 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 		int msec_difpt = 15*1000*(i+1);
 		int msec_revpt = msec_result + (step * msec_difpt);
 		bool smute = pdata->isSmuteFromMsec(msec_revpt);
-		fprintf(stderr, "[DBG]   loop i=%d msec_revpt=%d smute=%d\n", i, (int)msec_revpt, (int)smute);
+		DBG("[DBG]   loop i=%d msec_revpt=%d smute=%d\n", i, (int)msec_revpt, (int)smute);
 		//--- 無音区切りであれば候補 ---
 		if (smute){
 			bool flag_match = true;
@@ -3718,7 +3723,7 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 				((msec_revpt <= msec_limit_rev && step < 0) ||
 				 (msec_revpt >= msec_limit_rev && step > 0))){
 					flag_match = false;
-					fprintf(stderr, "[DBG]     limit blocked: msec_limit_rev=%d\n", (int)msec_limit_rev);
+					DBG("[DBG]     limit blocked: msec_limit_rev=%d\n", (int)msec_limit_rev);
 			}
 			//--- limit以外の条件 ---
 			if (flag_match == true){
@@ -3766,7 +3771,7 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 					match_cm = true;			// CM期間が確実に存在
 				}
 				//--- 設定別の条件 ---
-				fprintf(stderr, "[DBG]     match: none=%d full=%d half=%d minlogo=%d later=%d logo=%d cm=%d | cmSide=%d set_point=%d\n",
+				DBG("[DBG]     match: none=%d full=%d half=%d minlogo=%d later=%d logo=%d cm=%d | cmSide=%d set_point=%d\n",
 					(int)match_none, (int)match_full, (int)match_half, (int)match_minlogo, (int)match_later, (int)match_logo, (int)match_cm,
 					(int)form.msecCmSide, (int)msec_set_point);
 				if (form.revDelEdge == 4){
@@ -3796,7 +3801,7 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 						flag_match = false;
 					}
 				}
-				fprintf(stderr, "[DBG]     -> flag_match=%d (revDelEdge=%d)\n", (int)flag_match, (int)form.revDelEdge);
+				DBG("[DBG]     -> flag_match=%d (revDelEdge=%d)\n", (int)flag_match, (int)form.revDelEdge);
 			}
 			//--- CMとして追加 ---
 			if (flag_match == true){
@@ -3809,10 +3814,10 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 						nsc_new = pdata->getNscForceMsec(msec_revpt, LOGO_EDGE_RISE);
 					}
 				}
-				fprintf(stderr, "[DBG]     nsc_new=%d (type_nosc=%d)\n", (int)nsc_new, (int)type_nosc);
+				DBG("[DBG]     nsc_new=%d (type_nosc=%d)\n", (int)nsc_new, (int)type_nosc);
 				if (nsc_new > 0){
 					det = true;
-					fprintf(stderr, "[DBG]     -> CM added! nsc_new=%d msec_revpt=%d\n", (int)nsc_new, (int)msec_revpt);
+					DBG("[DBG]     -> CM added! nsc_new=%d msec_revpt=%d\n", (int)nsc_new, (int)msec_revpt);
 					//--- 挿入があるためnsc取り直し ---
 					int nsc_set_point = pdata->getNscFromMsecChap(
 										msec_set_point, pdata->msecValNear2, SCP_CHAP_DFIX);
