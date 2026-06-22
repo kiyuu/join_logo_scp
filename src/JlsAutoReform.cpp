@@ -3551,7 +3551,9 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 	bool det = false;
 	//--- ロゴ構成区間内の15秒構成をCM化する処理 ---
 	int rev_del_edge = pdata->getConfigAction(ConfigActType::LogoDelEdge);
+	int dbg_logorevise = pdata->getConfig(ConfigVarType::LogoRevise);
 	//--- 開始位置の補正 ---
+	DBG("[DBG] setCMFormByLogo: LogoRevise=%d rev_del_edge=%d\n", dbg_logorevise, rev_del_edge);
 	DBG("[DBG] setCMFormByLogo: fixSt=%d bounds.st=%d cmscope.st.just=%d early=%d late=%d\n",
 		(int)cmscope.fixSt, (int)bounds.st, (int)cmscope.st.just, (int)cmscope.st.early, (int)cmscope.st.late);
 	if (cmscope.fixSt == false && bounds.st > 0 && cmscope.st.just > 0){
