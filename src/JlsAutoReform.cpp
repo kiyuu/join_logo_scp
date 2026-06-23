@@ -3244,8 +3244,22 @@ bool JlsAutoReform::setCMFormDetect(Msec &msec_stpoint, Nsc nsc_base, RangeWideM
 			Nsc nsc_near = pdata->getNscFromMsecChap(msec_align, pdata->msecValLap2, SCP_CHAP_CDET);
 			Nsc nsc_chk  = pdata->getNscFromMsecChap(msec_align, pdata->msecValLap2, SCP_CHAP_DFORCE);
 			//--- 終了条件判定 ---
-			if (sec_dif15 > 120 || (sec_dif15 > sec_difend && sec_difend > 0)){
+			if (sec_dif15 > 120){
 				fin = true;
+			}
+			else if (sec_dif15 > sec_difend && sec_difend > 0){
+				Msec msec_align_chk = msec_base - (sec_dif15 * 1000);
+				Nsc nsc_chk_cont = pdata->getNscFromMsecChap(msec_align_chk, pdata->msecValLap2, SCP_CHAP_CDET);
+				if (nsc_chk_cont < 0){
+					fin = true;
+				}
+				else{
+					Sec sec_logo_chk = pdata->getSecLogoComponent(msec_i, msec_base);
+					Sec sec_span = pdata->cnv.getSecFromMsec(msec_base - msec_i);
+					if (sec_logo_chk > sec_span / 2){
+						fin = true;
+					}
+				}
 			}
 			else{
 				bool flag_dif_near = (abs(msec_i - msec_align) < pdata->msecValLap2)? true : false;
@@ -3270,7 +3284,6 @@ bool JlsAutoReform::setCMFormDetect(Msec &msec_stpoint, Nsc nsc_base, RangeWideM
 				if (nsc_near == i && nsc_chk < 0 && sec_dif15 > 0 && sec_dif15 <= 120){
 					//--- 15秒単位の設定 ---
 					det = true;
-					fin = true;
 					pdata->setScpChap(nsc_save, SCP_CHAP_DFIX);
 					if (findscope.logomode == false){
 						pdata->setScpArstat(nsc_save, SCP_AR_N_UNIT);
@@ -3532,7 +3545,7 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 				FormCMByLogo form;
 				form.msecTarget   = cmscope.st.just;
 				form.msecLimit    = msec_limit;
-				form.msecCmSide   = cmscope.st.late;
+				form.msecCmSide   = cmscope.st.just + pdata->msecValLap2;
 				form.msecLogoSide = cmscope.st.early;
 				form.revDelEdge   = rev_del_edge;
 				form.dr           = SEARCH_DIR_PREV;
@@ -3550,7 +3563,7 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 				FormCMByLogo form;
 				form.msecTarget   = cmscope.ed.just;
 				form.msecLimit    = msec_limit;
-				form.msecCmSide   = cmscope.ed.early;
+				form.msecCmSide   = cmscope.ed.just - pdata->msecValLap2;
 				form.msecLogoSide = cmscope.ed.late;
 				form.revDelEdge   = rev_del_edge;
 				form.dr           = SEARCH_DIR_NEXT;
@@ -3695,7 +3708,7 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 					Msec msec_difbase = abs(msec_result - msec_set_point);
 					Msec msec_diftarget = msec_cmdetect - msec_difbase;
 					Msec msec_difrev  = abs(msec_revpt - msec_set_point);
-					if (msec_diftarget <= pdata->msecValLap2){
+					if (msec_diftarget <= pdata->msecValSpc){
 						match_none = true;
 					}
 					else if (msec_diftarget >= msec_difrev - pdata->msecValLap2){
