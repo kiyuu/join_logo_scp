@@ -3992,6 +3992,10 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 			det = true;
 		}
 	}
+	//--- 非15秒・反対側の確定境界なし: 端拡張せず本編を残す ---
+	if (det && sidesel.nscOther < 0 && !isCmLengthMsec(msec_dif_fixed)){
+		det = false;
+	}
 	//--- 実行 ---
 	if (det){
 		bool flag_other_s15  = (isCmLengthMsec(msec_dif_other) && sidesel.nscOther >= 0)? true : false;
