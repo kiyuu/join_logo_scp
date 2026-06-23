@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Release x64
+        run: >
+          msbuild src\join_logo_scp.vcxproj
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:WindowsTargetPlatformVersion=10.0
+
+      - name: Find built exe
+        id: find
+        shell: pwsh
+        run: |
+          $exe = @(Get-ChildItem -Path src -Recurse -Filter join_logo_scp.exe)
+          if ($exe.Count -eq 0) { Write-Error "join_logo_scp.exe not found"; exit 1 }
+          $dir = $exe[0].DirectoryName
+          Write-Host "Found: $($exe[0].FullName)"
+          "exe_dir=$dir" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: join_logo_scp-x64
+          path: ${{ steps.find.outputs.exe_dir }}/join_logo_scp.exe
+          retention-days: 90
