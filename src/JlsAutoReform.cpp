@@ -3601,6 +3601,9 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 	//--- 終了位置の補正 ---
 	if (cmscope.fixEd == 0 && bounds.ed > 0 && cmscope.ed.just > 0){
 		Msec msec_limit = setCMFormByLogoLimit(bounds.ed, SEARCH_DIR_NEXT);
+		DBG("[DBG]   ED: bounds.ed=%d cmscope.ed.just=%d msec_limit=%d cond1=%d cond2=%d\n",
+			(int)bounds.ed, (int)cmscope.ed.just, (int)msec_limit,
+			(int)(bounds.ed < msec_limit || msec_limit < 0), (int)(bounds.ed < cmscope.ed.just));
 		if (bounds.ed < msec_limit || msec_limit < 0){
 			if (bounds.ed < cmscope.ed.just){
 				//--- CM情報の追加 ---
@@ -3611,7 +3614,10 @@ bool JlsAutoReform::setCMFormByLogo(RangeMsec &bounds, RangeWideMsec cmscope){
 				form.msecLogoSide = cmscope.ed.late;
 				form.revDelEdge   = rev_del_edge;
 				form.dr           = SEARCH_DIR_NEXT;
+				DBG("[DBG]   ED calling setCMFormByLogoAdd: msecTarget=%d msecCmSide=%d msecLogoSide=%d revDelEdge=%d\n",
+					(int)form.msecTarget, (int)form.msecCmSide, (int)form.msecLogoSide, (int)form.revDelEdge);
 				int det_tmp = setCMFormByLogoAdd(bounds.ed, form);
+				DBG("[DBG]   ED setCMFormByLogoAdd returned: det_tmp=%d bounds.ed=%d\n", det_tmp, (int)bounds.ed);
 				if (det_tmp) det = true;
 			}
 		}
@@ -3879,6 +3885,8 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 //   返り値: 構成追加判定（false=なし  true=あり）
 //---------------------------------------------------------------------
 bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool logo1st){
+	DBG("[DBG] setCMFormEdge: bounds.st=%d bounds.ed=%d cmscope.st.just=%d cmscope.ed.just=%d logo1st=%d\n",
+		(int)bounds.st, (int)bounds.ed, (int)cmscope.st.just, (int)cmscope.ed.just, (int)logo1st);
 	//--- ロゴ情報の使用判断 ---
 	int lvlogo = pdata->getLevelUseLogo();
 	ScpChapType chap_cmp;
@@ -3893,6 +3901,9 @@ bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool
 	FormCMEdgeSide sideed;
 	bool valid_detect_st = setCMFormEdgeSideInfo(sidest, bounds.st, cmscope.st, chap_cmp, false);
 	bool valid_detect_ed = setCMFormEdgeSideInfo(sideed, bounds.ed, cmscope.ed, chap_cmp, true);
+	DBG("[DBG]   setCMFormEdge: valid_detect_st=%d sidest.nscDetect=%d sidest.nscFixed=%d | valid_detect_ed=%d sideed.nscDetect=%d sideed.nscFixed=%d\n",
+		(int)valid_detect_st, (int)sidest.nscDetect, (int)sidest.nscFixed,
+		(int)valid_detect_ed, (int)sideed.nscDetect, (int)sideed.nscFixed);
 	//--- 構成制限 ---
 	int level;
 	if (lvlogo <= CONFIG_LOGO_LEVEL_USE_LOW){
@@ -3913,9 +3924,11 @@ bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool
 	if (valid_detect_st && sidest.nscFixed >= 0){
 		sidest.logoModePrev = logo1st;						// 先頭ロゴ状態を設定
 		change_st = setCMFormEdgeSetSide(sidest, level);
+		DBG("[DBG]   setCMFormEdge: setCMFormEdgeSetSide(st) -> change_st=%d\n", (int)change_st);
 	}
 	if (valid_detect_ed && sideed.nscFixed >= 0){
 		change_ed = setCMFormEdgeSetSide(sideed, level);
+		DBG("[DBG]   setCMFormEdge: setCMFormEdgeSetSide(ed) -> change_ed=%d\n", (int)change_ed);
 	}
 	//--- 15秒構成がない場合のロゴ前後位置で構成作成 ---
 	if (valid_detect_st && valid_detect_ed && sidest.nscFixed < 0 && sideed.nscFixed < 0){
@@ -3926,8 +3939,11 @@ bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool
 		RangeNsc rnsc_scope;
 		rnsc_scope.st = pdata->getNscPrevScpChap(sideed.nscDetect, SCP_CHAP_DECIDE);
 		rnsc_scope.ed = pdata->getNscNextScpChap(sidest.nscDetect, SCP_CHAP_DECIDE);
+		DBG("[DBG]   setCMFormEdge: calling setCMFormEdgeSetBoth rnsc_detect=(%d,%d) rnsc_scope=(%d,%d) level=%d logo1st=%d\n",
+			(int)rnsc_detect.st, (int)rnsc_detect.ed, (int)rnsc_scope.st, (int)rnsc_scope.ed, level, (int)logo1st);
 		change_st = setCMFormEdgeSetBoth(rnsc_detect, rnsc_scope, level, logo1st);
 		change_ed = change_st;
+		DBG("[DBG]   setCMFormEdge: setCMFormEdgeSetBoth -> change_st=change_ed=%d\n", (int)change_st);
 	}
 	//--- 範囲更新 ---
 	if (change_st){
@@ -3938,6 +3954,7 @@ bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool
 	}
 
 	bool det = change_st | change_ed;
+	DBG("[DBG] setCMFormEdge returned: det=%d bounds.st=%d bounds.ed=%d\n", (int)det, (int)bounds.st, (int)bounds.ed);
 	return det;
 }
 
@@ -3950,6 +3967,8 @@ bool JlsAutoReform::setCMFormEdge(RangeMsec &bounds, RangeWideMsec cmscope, bool
 bool JlsAutoReform::setCMFormEdgeSideInfo(FormCMEdgeSide &sidesel, Msec msec_bounds, WideMsec wmsec_scope, ScpChapType chap_cmp, bool endside){
 	//--- ロゴ構成区間内の端構成をCM化する処理 ---
 	int rev_del_edge = pdata->getConfigAction(ConfigActType::LogoDelEdge);
+	DBG("[DBG]     setCMFormEdgeSideInfo: msec_bounds=%d wmsec_scope.just=%d early=%d late=%d rev_del_edge=%d endside=%d\n",
+		(int)msec_bounds, (int)wmsec_scope.just, (int)wmsec_scope.early, (int)wmsec_scope.late, rev_del_edge, (int)endside);
 	//--- 検索範囲を設定 ---
 	bool valid_detect = true;
 	WideMsec usescope = wmsec_scope;
@@ -3982,6 +4001,7 @@ bool JlsAutoReform::setCMFormEdgeSideInfo(FormCMEdgeSide &sidesel, Msec msec_bou
 			}
 		}
 	}
+	DBG("[DBG]     setCMFormEdgeSideInfo: valid_detect=%d (after rev_del_edge gating)\n", (int)valid_detect);
 	if (valid_detect == false){
 		sidesel.nscDetect = -1;
 		return false;
@@ -4026,6 +4046,12 @@ bool JlsAutoReform::setCMFormEdgeSideInfo(FormCMEdgeSide &sidesel, Msec msec_bou
 		sidesel.logoModeNext = true;
 	}
 	if (sidesel.nscDetect < 0) valid_detect = false;
+	DBG("[DBG]     setCMFormEdgeSideInfo returned: valid_detect=%d nscDetect=%d (msec=%d) nscFixed=%d (msec=%d) nscOther=%d\n",
+		(int)valid_detect, (int)sidesel.nscDetect,
+		(sidesel.nscDetect >= 0)? (int)pdata->getMsecScp(sidesel.nscDetect) : -1,
+		(int)sidesel.nscFixed,
+		(sidesel.nscFixed >= 0)? (int)pdata->getMsecScp(sidesel.nscFixed) : -1,
+		(int)sidesel.nscOther);
 	return valid_detect;
 }
 
@@ -4041,11 +4067,15 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 	Msec msec_dif_fixed = abs(msec_detect - msec_fixed);
 	Msec msec_dif_other = abs(msec_detect - msec_other);
 	SearchDirType dr = (sidesel.nscDetect < sidesel.nscFixed)? SEARCH_DIR_PREV : SEARCH_DIR_NEXT;
+	DBG("[DBG]     setCMFormEdgeSetSide: nscDetect=%d(msec=%d) nscFixed=%d(msec=%d) nscOther=%d(msec=%d) dr=%d level=%d\n",
+		(int)sidesel.nscDetect, (int)msec_detect, (int)sidesel.nscFixed, (int)msec_fixed,
+		(int)sidesel.nscOther, (int)msec_other, (int)dr, level);
 	//--- 対象２点存在なし、確定位置と隣接時は実行なし ---
 	if (sidesel.nscDetect < 0 ||
 		sidesel.nscFixed  < 0 ||
 		(msec_dif_fixed <= pdata->msecValLap2) ||
 		(msec_dif_other <= pdata->msecValLap2 && sidesel.nscOther >= 0)){
+		DBG("[DBG]     setCMFormEdgeSetSide: skip (missing points or adjacent to fixed)\n");
 		return false;
 	}
 	//--- 対象２点の距離から実行有無を検出 ---
@@ -4066,6 +4096,7 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 			det = true;
 		}
 	}
+	DBG("[DBG]     setCMFormEdgeSetSide: det=%d (msec_dif_fixed=%d msec_dif_other=%d)\n", (int)det, (int)msec_dif_fixed, (int)msec_dif_other);
 	//--- 実行 ---
 	if (det){
 		bool flag_other_s15  = (isCmLengthMsec(msec_dif_other) && sidesel.nscOther >= 0)? true : false;
@@ -4086,6 +4117,9 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 			else{
 				arstat_detect = (flag_other_s15)? SCP_AR_N_UNIT : SCP_AR_N_OTHER;
 			}
+			DBG("[DBG]       setCMFormEdgeSetSide PREV-write: nscFixed=%d(msec=%d)->arstat=%d | nscDetect=%d(msec=%d)->arstat=%d\n",
+				(int)sidesel.nscFixed, (int)msec_fixed, (int)arstat_fixed,
+				(int)sidesel.nscDetect, (int)msec_detect, (int)arstat_detect);
 			pdata->setScpArstat(sidesel.nscFixed,  arstat_fixed);
 			pdata->setScpArstat(sidesel.nscDetect, arstat_detect);
 		}
@@ -4104,6 +4138,9 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 			else{
 				arstat_other = (flag_other_s15)? SCP_AR_N_UNIT : SCP_AR_N_OTHER;
 			}
+			DBG("[DBG]       setCMFormEdgeSetSide NEXT-write: nscDetect=%d(msec=%d)->arstat=%d | nscOther=%d(msec=%d)->arstat=%d\n",
+				(int)sidesel.nscDetect, (int)msec_detect, (int)arstat_detect,
+				(int)sidesel.nscOther, (int)msec_other, (int)arstat_other);
 			pdata->setScpArstat(sidesel.nscDetect, arstat_detect);
 			pdata->setScpArstat(sidesel.nscOther,  arstat_other);
 		}
@@ -4122,6 +4159,9 @@ bool JlsAutoReform::setCMFormEdgeSetBoth(RangeNsc rnsc_detect, RangeNsc rnsc_sco
 	Msec msec_dif_st = abs(rmsec_detect.st - rmsec_scope.st);
 	Msec msec_dif_ed = abs(rmsec_detect.ed - rmsec_scope.ed);
 	Msec msec_dif_detect = abs(rmsec_detect.st - rmsec_detect.ed);
+	DBG("[DBG]     setCMFormEdgeSetBoth: rnsc_detect=(%d,%d) rnsc_scope=(%d,%d) msec_dif_st=%d msec_dif_ed=%d msec_dif_detect=%d level=%d logo1st=%d\n",
+		(int)rnsc_detect.st, (int)rnsc_detect.ed, (int)rnsc_scope.st, (int)rnsc_scope.ed,
+		(int)msec_dif_st, (int)msec_dif_ed, (int)msec_dif_detect, level, (int)logo1st);
 
 	//--- 対象２点存在なし、検出前後関係逆、確定位置と隣接時は実行なし ---
 	if (rnsc_detect.st < 0 ||
@@ -4131,6 +4171,7 @@ bool JlsAutoReform::setCMFormEdgeSetBoth(RangeNsc rnsc_detect, RangeNsc rnsc_sco
 		(rnsc_detect.ed >= rnsc_scope.ed && rnsc_scope.ed >= 0) ||
 		(msec_dif_st <= pdata->msecValLap2 && rnsc_scope.st >= 0) ||
 		(msec_dif_ed <= pdata->msecValLap2 && rnsc_scope.ed >= 0)){
+		DBG("[DBG]     setCMFormEdgeSetBoth: skip (invalid range)\n");
 		return false;
 	}
 	//--- 対象２点の距離から実行有無を検出 ---
@@ -4151,6 +4192,7 @@ bool JlsAutoReform::setCMFormEdgeSetBoth(RangeNsc rnsc_detect, RangeNsc rnsc_sco
 			det = true;
 		}
 	}
+	DBG("[DBG]     setCMFormEdgeSetBoth: det=%d\n", (int)det);
 	//--- 実行 ---
 	if (det){
 		Nsc  nsc_end = rnsc_scope.ed;
@@ -4178,6 +4220,10 @@ bool JlsAutoReform::setCMFormEdgeSetBoth(RangeNsc rnsc_detect, RangeNsc rnsc_sco
 		else{
 			arstat_c3  = (flag_ed_s15)? SCP_AR_N_UNIT : SCP_AR_N_OTHER;
 		}
+		DBG("[DBG]       setCMFormEdgeSetBoth write: nsc=%d(msec=%d)->arstat_c1=%d | nsc=%d(msec=%d)->arstat_c2=%d | nsc_end=%d->arstat_c3=%d\n",
+			(int)rnsc_detect.st, (int)rmsec_detect.st, (int)arstat_c1,
+			(int)rnsc_detect.ed, (int)rmsec_detect.ed, (int)arstat_c2,
+			(int)nsc_end, (int)arstat_c3);
 		pdata->setScpChap(rnsc_detect.st, SCP_CHAP_DFIX);
 		pdata->setScpChap(rnsc_detect.ed, SCP_CHAP_DFIX);
 		pdata->setScpArstat(rnsc_detect.st, arstat_c1);
