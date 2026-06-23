@@ -437,7 +437,10 @@ void JlsAutoReform::addLogoEdge(){
 	//--- 認識最小期間 ---
 	Msec msec_recmin = pdata->getConfig(ConfigVarType::msecWLogoCmMin);
 	//--- ロゴ構成区間内の端構成をCM化する処理設定 ---
+	DBG("[DBG] addLogoEdge: LogoDelWide=%d msecWLogoCmMin(msec_recmin)=%d\n",
+		(int)pdata->getConfigAction(ConfigActType::LogoDelWide), (int)msec_recmin);
 	if (pdata->getConfigAction(ConfigActType::LogoDelWide) == 0){
+		DBG("[DBG]   addLogoEdge: skipped (LogoDelWide=0)\n");
 		return;								// カットしない設定では終了
 	}
 	int rev_del_edge = pdata->getConfigAction(ConfigActType::LogoDelEdge);
@@ -462,6 +465,10 @@ void JlsAutoReform::addLogoEdge(){
 			}
 		}
 		if (remain_logo || valid_last){
+			DBG("[DBG]   addLogoEdge: candidate gap msecLastFall=%d msecRise=%d gap=%d msec_recmin=%d valid_last=%d -> %s\n",
+				(int)logopt.msecLastFall, (int)logopt.msecRise,
+				(int)(logopt.msecRise - logopt.msecLastFall), (int)msec_recmin, (int)valid_last,
+				(logopt.msecRise - logopt.msecLastFall >= msec_recmin) ? "ENTER" : "skip(gap<recmin)");
 			if (logopt.msecRise - logopt.msecLastFall >= msec_recmin){
 				//--- ロゴ位置取得（前のfallから現在のriseまでの区間） ---
 				RangeWideMsec area_nologo;
@@ -586,6 +593,9 @@ void JlsAutoReform::addLogoEdgeUpdate(RangeWideMsec area_nologo, int msec_recmin
 	rmsec_select.st = pdata->getMsecScp(rnsc_select.st);
 	rmsec_select.ed = pdata->getMsecScp(rnsc_select.ed);
 	//--- 期間チェック ---
+	DBG("[DBG]   addLogoEdgeUpdate: rmsec_select.st=%d rmsec_select.ed=%d (len=%d) msec_recmin=%d -> %s\n",
+		(int)rmsec_select.st, (int)rmsec_select.ed, (int)(rmsec_select.ed - rmsec_select.st), (int)msec_recmin,
+		(rmsec_select.ed - rmsec_select.st >= msec_recmin) ? "ENTER" : "skip(len<recmin)");
 	if (rmsec_select.ed - rmsec_select.st >= msec_recmin){
 		ElgCurrent elg = {};
 		while( pdata->getElgptNext(elg) ){
@@ -602,15 +612,23 @@ void JlsAutoReform::addLogoEdgeUpdate(RangeWideMsec area_nologo, int msec_recmin
 				rmsec_del.st = pdata->getMsecScp(rnsc_del.st);
 				rmsec_del.ed = pdata->getMsecScp(rnsc_del.ed);
 				//--- ロゴなしのロゴ扱い期間が設定値以上、または構成全体が削除範囲内なら更新 ---
+				DBG("[DBG]     addLogoEdgeUpdate: rmsec_del.st=%d rmsec_del.ed=%d (len=%d) -> %s\n",
+					(int)rmsec_del.st, (int)rmsec_del.ed, (int)(rmsec_del.ed - rmsec_del.st),
+					((rmsec_del.ed - rmsec_del.st >= msec_recmin) ||
+					(rnsc_del.st <= elg.nscRise && rnsc_del.ed >= elg.nscFall)) ? "APPLY" : "skip");
 				if ((rmsec_del.ed - rmsec_del.st >= msec_recmin) ||
 					(rnsc_del.st <= elg.nscRise && rnsc_del.ed >= elg.nscFall)){
 					ScpChapType chap_st = pdata->getScpChap(rnsc_del.st);
 					ScpChapType chap_ed = pdata->getScpChap(rnsc_del.ed);
 					if (chap_st < SCP_CHAP_DFIX){
+						DBG("[DBG]       set st: nsc=%d msec=%d -> SCP_AR_L_OTHER\n",
+							(int)rnsc_del.st, (int)pdata->getMsecScp(rnsc_del.st));
 						pdata->setScpChap(rnsc_del.st, SCP_CHAP_DFIX);	// 更新
 						pdata->setScpArstat(rnsc_del.st, SCP_AR_L_OTHER);
 					}
 					if (chap_ed < SCP_CHAP_DFIX){
+						DBG("[DBG]       set ed: nsc=%d msec=%d -> SCP_AR_N_OTHER\n",
+							(int)rnsc_del.ed, (int)pdata->getMsecScp(rnsc_del.ed));
 						pdata->setScpChap(rnsc_del.ed, SCP_CHAP_DFIX);	// 更新
 						pdata->setScpArstat(rnsc_del.ed, SCP_AR_N_OTHER);
 					}
@@ -628,6 +646,8 @@ void JlsAutoReform::addLogoEdgeUpdate(RangeWideMsec area_nologo, int msec_recmin
 								arstat_new = SCP_AR_N_OTHER;
 							}
 							if (arstat_tmp != arstat_new){
+								DBG("[DBG]       set mid: nsc=%d msec=%d arstat %d -> %d\n",
+									(int)nsc_tmp, (int)pdata->getMsecScp(nsc_tmp), (int)arstat_tmp, (int)arstat_new);
 								pdata->setScpArstat(nsc_tmp, arstat_new);	// 更新
 							}
 						}
@@ -3825,10 +3845,15 @@ bool JlsAutoReform::setCMFormByLogoAdd(Msec &msec_result, FormCMByLogo form){
 										msec_set_point, pdata->msecValNear2, SCP_CHAP_DFIX);
 					pdata->setScpChap(nsc_new, SCP_CHAP_DFIX);
 					if (step < 0){
+						DBG("[DBG]     PREV-write: nsc_new=%d msec=%d -> arstat_new=%d | nsc_set_point=%d msec=%d -> SCP_AR_N_UNIT\n",
+							(int)nsc_new, (int)pdata->getMsecScp(nsc_new), (int)arstat_new,
+							(int)nsc_set_point, (int)pdata->getMsecScp(nsc_set_point));
 						pdata->setScpArstat(nsc_new, arstat_new);
 						pdata->setScpArstat(nsc_set_point, SCP_AR_N_UNIT);
 					}
 					else{
+						DBG("[DBG]     NEXT-write: nsc_new=%d msec=%d -> SCP_AR_N_UNIT\n",
+							(int)nsc_new, (int)pdata->getMsecScp(nsc_new));
 						pdata->setScpArstat(nsc_new, SCP_AR_N_UNIT);
 					}
 					msec_set_point = msec_revpt;
