@@ -4129,7 +4129,9 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 				arstat_detect = (flag_fixed_s15)? SCP_AR_L_UNIT : SCP_AR_L_OTHER;
 			}
 			else{
-				arstat_detect = (flag_fixed_s15)? SCP_AR_N_UNIT : SCP_AR_N_OTHER;
+				if (flag_fixed_s15)            arstat_detect = SCP_AR_N_UNIT;
+				else if (sidesel.nscOther < 0) arstat_detect = SCP_AR_L_OTHER;  // 非15秒・反対側確定なし→本編側
+				else                           arstat_detect = SCP_AR_N_OTHER;
 			}
 			ScpArType arstat_other;
 			if (sidesel.logoModeNext){
