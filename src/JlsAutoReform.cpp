@@ -4097,6 +4097,11 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 		}
 	}
 	DBG("[DBG]     setCMFormEdgeSetSide: det=%d (msec_dif_fixed=%d msec_dif_other=%d)\n", (int)det, (int)msec_dif_fixed, (int)msec_dif_other);
+	//--- 非15秒単位かつ反対側の確定境界なし: CM断定の根拠が薄いため端拡張しない（本編を残す） ---
+	if (det && sidesel.nscOther < 0 && !isCmLengthMsec(msec_dif_fixed)){
+		DBG("[DBG]     setCMFormEdgeSetSide: suppress extension (non-15s & no nscOther)\n");
+		det = false;
+	}
 	//--- 実行 ---
 	if (det){
 		bool flag_other_s15  = (isCmLengthMsec(msec_dif_other) && sidesel.nscOther >= 0)? true : false;
@@ -4129,9 +4134,7 @@ bool JlsAutoReform::setCMFormEdgeSetSide(FormCMEdgeSide &sidesel, int level){
 				arstat_detect = (flag_fixed_s15)? SCP_AR_L_UNIT : SCP_AR_L_OTHER;
 			}
 			else{
-				if (flag_fixed_s15)            arstat_detect = SCP_AR_N_UNIT;
-				else if (sidesel.nscOther < 0) arstat_detect = SCP_AR_L_OTHER;  // 非15秒・反対側確定なし→本編側
-				else                           arstat_detect = SCP_AR_N_OTHER;
+				arstat_detect = (flag_fixed_s15)? SCP_AR_N_UNIT : SCP_AR_N_OTHER;
 			}
 			ScpArType arstat_other;
 			if (sidesel.logoModeNext){
