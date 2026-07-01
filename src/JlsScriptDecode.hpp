@@ -494,6 +494,7 @@ const vector<ConfigDataRecord> ConfigDefine = {
 	{ "ZoneFirst"    , ConfigVarType::msecZoneFirst,       ConvStrType::MsecM1 },
 	{ "ZoneLast"     , ConfigVarType::msecZoneLast,        ConvStrType::MsecM1 },
 	{ "LvPosFirst"   , ConfigVarType::priorityPosFirst,    ConvStrType::Num    },
+	{ "ScDivMin"     , ConfigVarType::scDivMin,            ConvStrType::Sec    },
 };
 //--- オプションの未指定時複写 ---
 // （対象コマンド、複写先オプション、複写元オプション）

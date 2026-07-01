@@ -53,6 +53,7 @@ void JlsDataset::initData(){
 	setConfig(ConfigVarType::msecZoneFirst       , -1   );
 	setConfig(ConfigVarType::msecZoneLast        , -1   );
 	setConfig(ConfigVarType::priorityPosFirst    , 0    );
+	setConfig(ConfigVarType::scDivMin            , 0    );
 
 	//--- 外部設定オプション ---
 	extOpt = {};		// 念のため個別に初期化
@@ -3602,6 +3603,41 @@ void JlsDataset::outputResultTrimGenAuto(){
 	while ( getElgptNext(elg) ){
 		resultTrim.push_back( elg.msecRise );
 		resultTrim.push_back( elg.msecFall );
+	}
+}
+
+// 地続き本編を主要SC(非静止)で分割する（構成データに DUNIT 区切りを設定）
+//   本編(ロゴ)区間の内部で、前回分割からScDivMin秒以上離れた非静止SCに
+//   SCP_CHAP_DUNIT を立てる。詳細(CM解析結果)・Trim・div が整合して分割される。
+//   ScDivMin(秒設定)=0 の時は何もしない（従来動作）。
+void JlsDataset::splitMainBySC(){
+	Msec minGap = (Msec) getConfig(ConfigVarType::scDivMin) * 1000;	// 秒→msec
+	if (minGap <= 0) return;
+	//--- 現在の本編(elg)区間を先に列挙 ---
+	vector<RangeMsec> mains;
+	ElgCurrent elg = {};
+	elg.outflag = true;
+	while ( getElgptNext(elg) ){
+		RangeMsec r = { elg.msecRise, elg.msecFall };
+		mains.push_back( r );
+	}
+	//--- 各本編区間の内部主要SCに DUNIT を設定 ---
+	int nscp = sizeDataScp();
+	for(int m=0; m<(int)mains.size(); m++){
+		Msec rise = mains[m].st;
+		Msec fall = mains[m].ed;
+		Msec lastSplit = rise;
+		for(int k=0; k<nscp; k++){
+			Msec p = getMsecScp(k);
+			if (p <= rise) continue;
+			if (p >= fall) break;					// scpは昇順前提
+			if (p - lastSplit < minGap) continue;	// 前回分割から最小間隔未満
+			if (fall - p < minGap) continue;		// 末尾に近すぎる位置は避ける
+			if (getScpStill(k)) continue;			// 静止画位置(＿)は除外
+			setScpArstat(k, SCP_AR_L_OTHER);		// 分割後もロゴ(本編)
+			setScpChap(k, SCP_CHAP_DUNIT);			// Trimも分割される区切り
+			lastSplit = p;
+		}
 	}
 }
 
