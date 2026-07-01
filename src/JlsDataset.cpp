@@ -53,6 +53,12 @@ void JlsDataset::initData(){
 	setConfig(ConfigVarType::msecZoneFirst       , -1   );
 	setConfig(ConfigVarType::msecZoneLast        , -1   );
 	setConfig(ConfigVarType::priorityPosFirst    , 0    );
+	setConfig(ConfigVarType::scSlotMin           , 0    );
+	setConfig(ConfigVarType::scOpSec             , 0    );
+	setConfig(ConfigVarType::scEdSec             , 0    );
+	setConfig(ConfigVarType::scTrSec             , 0    );
+	setConfig(ConfigVarType::scSpSec             , 0    );
+	setConfig(ConfigVarType::scEcSec             , 0    );
 
 	//--- 外部設定オプション ---
 	extOpt = {};		// 念のため個別に初期化
@@ -3604,6 +3610,76 @@ void JlsDataset::outputResultTrimGenAuto(){
 		resultTrim.push_back( elg.msecFall );
 	}
 }
+
+// 番組構造ベースの「区切り」挿入 v1（除去はしない。切るのはJLS側）
+//   本編末を起点に ED→予告→SP→アイキャッチ の秒を積み、各境界を最寄りの
+//   非静止シーンチェンジに合わせて DUNIT 区切り(:Lのまま)を入れる。
+//   SlotMin=0 で無効（従来動作）。詳細は DESIGN_structure_split.md。
+void JlsDataset::splitMainBySC(){
+	int slotMin = getConfig(ConfigVarType::scSlotMin);
+	if (slotMin <= 0) return;
+	int edSec = getConfig(ConfigVarType::scEdSec);
+	int trSec = getConfig(ConfigVarType::scTrSec);
+	int spSec = getConfig(ConfigVarType::scSpSec);
+	int ecSec = getConfig(ConfigVarType::scEcSec);
+	int nscp = sizeDataScp();
+	if (nscp < 2) return;
+	Msec total = getMsecScp(nscp - 1);
+	Msec slotMs = (Msec)((long long)slotMin * 60 * 1000);
+	if (slotMs <= 0) return;
+	Msec endTotal = (Msec)((edSec + trSec + spSec + ecSec) * 1000);
+	const Msec winAnchor = 15000;
+	const Msec winZone   = 5000;
+
+	auto nearestNonStill = [&](Msec target, Msec win, Msec lo, Msec hi)->int{
+		int best = -1; Msec bd = win + 1;
+		for (int k = 0; k < nscp; k++){
+			Msec p = getMsecScp(k);
+			if (p <= lo || p >= hi) continue;
+			if (getScpStill(k)) continue;
+			Msec d = (p > target)? p - target : target - p;
+			if (d <= win && d < bd){ bd = d; best = k; }
+		}
+		return best;
+	};
+	auto putDiv = [&](int k){
+		setScpArstat(k, SCP_AR_L_OTHER);	// :Lのまま
+		setScpChap(k, SCP_CHAP_DUNIT);		// Trim/詳細/divに反映される区切り
+	};
+
+	//--- 本編(elg)区間を列挙 ---
+	vector<RangeMsec> mains;
+	ElgCurrent elg = {};
+	elg.outflag = true;
+	while (getElgptNext(elg)){
+		RangeMsec r = { elg.msecRise, elg.msecFall };
+		mains.push_back(r);
+	}
+
+	//--- 各内部スロット境界の手前に末端構造の区切りを入れる ---
+	for (Msec G = slotMs; G < total; G += slotMs){
+		int mi = -1;
+		for (int m = 0; m < (int)mains.size(); m++){
+			if (G > mains[m].st && G < mains[m].ed){ mi = m; break; }
+		}
+		if (mi < 0) continue;			// 境界が本編内でない(既にCMで割れている)なら不要
+		Msec lo = mains[mi].st, hi = mains[mi].ed;
+		int cur = nearestNonStill(G - endTotal, winAnchor, lo, hi);	// 本編末
+		if (cur < 0) continue;
+		putDiv(cur);
+		Msec cm = getMsecScp(cur);
+		int zones[4] = { edSec, trSec, spSec, ecSec };
+		for (int z = 0; z < 4; z++){
+			if (zones[z] <= 0) continue;
+			int d = nearestNonStill(cm + (Msec)(zones[z] * 1000), winZone, lo, hi);
+			if (d < 0) continue;
+			putDiv(d);
+			cm = getMsecScp(d);
+		}
+	}
+}
+
+
 
 
 

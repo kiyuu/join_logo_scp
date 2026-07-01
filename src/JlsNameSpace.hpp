@@ -103,6 +103,12 @@ namespace jlsd
 		msecZoneFirst,			// ロゴ無効とする開始位置検出設定期間
 		msecZoneLast,			// ロゴ無効とする終了位置検出設定期間
 		priorityPosFirst,		// 最初の位置設定優先度（0:制御なし 1:ロゴあり 2:位置優先 3:Select優先）
+		scSlotMin,				// 地続き:番組枠長(分)。0でOFF
+		scOpSec,				// OP長(秒)(予約)
+		scEdSec,				// ED長(秒)
+		scTrSec,				// 予告長(秒)
+		scSpSec,				// 提供長(秒)
+		scEcSec,				// アイキャッチ長(秒)
 		MAXSIZE
 	};
     static const int SIZE_CONFIG_VAR = static_cast<int>(ConfigVarType::MAXSIZE);
