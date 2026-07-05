@@ -4,6 +4,24 @@
 #include "JlsIF.hpp"
 #include "JlsScript.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
+#include <cstdarg>
+
+//=====================================================================
+// [DBG-INVESTIGATION] param_opsec/param_edsec 未反映調査用ログ（一時コード・マージ前に削除）
+//=====================================================================
+static FILE* g_jls_dbgfp_opsec_if = NULL;
+static void DBG_OPSEC(const char* fmt, ...){
+	if (g_jls_dbgfp_opsec_if == NULL){
+		g_jls_dbgfp_opsec_if = fopen("jls_debug_opsec.log", "a");
+		if (g_jls_dbgfp_opsec_if == NULL) return;
+	}
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(g_jls_dbgfp_opsec_if, fmt, ap);
+	va_end(ap);
+	fflush(g_jls_dbgfp_opsec_if);
+}
 
 //---------------------------------------------------------------------
 // 初期設定
@@ -76,6 +94,10 @@ void JlsIF::setArgFull(int argc, char *argv[]) {
 	//--- argv[1]から後を設定 ---
 	for(int i=1; i<argc; i++){
 		m_listarg.push_back(listArg[i]);
+	}
+	DBG_OPSEC("[JlsIF::setArgFull] argc=%d received tokens (index:value):\n", argc);
+	for(size_t i=0; i<m_listarg.size(); i++){
+		DBG_OPSEC("  [%d] \"%s\"\n", (int)i, m_listarg[i].c_str());
 	}
 }
 // 未使用（必要ならsetArgFullと同じ処理を作成）

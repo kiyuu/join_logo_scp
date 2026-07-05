@@ -9,6 +9,31 @@
 #include "JlsScrGlobal.hpp"
 #include "JlsCmdArg.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
+#include <cstdarg>
+#include <cstring>
+
+//=====================================================================
+// [DBG-INVESTIGATION] param_opsec/param_edsec 未反映調査用ログ（一時コード・マージ前に削除）
+//=====================================================================
+static FILE* g_jls_dbgfp_opsec_reg = NULL;
+static void DBG_OPSEC(const char* fmt, ...){
+	if (g_jls_dbgfp_opsec_reg == NULL){
+		g_jls_dbgfp_opsec_reg = fopen("jls_debug_opsec.log", "a");
+		if (g_jls_dbgfp_opsec_reg == NULL) return;
+	}
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(g_jls_dbgfp_opsec_reg, fmt, ap);
+	va_end(ap);
+	fflush(g_jls_dbgfp_opsec_reg);
+}
+static bool dbg_opsec_watch_name(const std::string& name){
+	std::string low = name;
+	for (auto& c : low) c = (char)tolower((unsigned char)c);
+	return (low.find("opsec") != std::string::npos || low.find("edsec") != std::string::npos ||
+	        low.find("slotmin") != std::string::npos || low.find("slotkeep") != std::string::npos);
+}
 
 
 void JlsScrFuncReg::setDataPointer(JlsDataset *pdata, JlsScrGlobal *pglobal, JlsScrFuncList *plist){
@@ -66,6 +91,7 @@ int JlsScrFuncReg::setOptionsGetOne(int argrest, const char* strv, const char* s
 				return -1;
 			}
 			else{
+				DBG_OPSEC("[setOptionsGetOne/-set] str1=\"%s\" str2=\"%s\" overwrite=%d\n", str1, str2, (int)overwrite);
 				if (setInputReg(str1, str2, overwrite) == false){
 					outputMesErr("-set bad argument\n");
 					return -1;
@@ -429,14 +455,27 @@ bool JlsScrFuncReg::setJlsRegVarLocal(const string& strName, const string& strVa
 //--- 通常の変数とローカル変数を選択して設定 ---
 bool JlsScrFuncReg::setJlsRegVarWithLocal(const string& strName, const string& strVal, bool overwrite, bool flagLocal){
 	if ( strName.empty() ) return false;
+	bool dbg_watch = dbg_opsec_watch_name(strName);
+	if (dbg_watch){
+		DBG_OPSEC("[setJlsRegVarWithLocal] ENTER strName=\"%s\" strVal=\"%s\" overwrite=%d flagLocal=%d\n",
+			strName.c_str(), strVal.c_str(), (int)overwrite, (int)flagLocal);
+	}
 	//--- リスト変数対応 ---
 	string strNameWrite = strName;
 	int lenFullVar;
 	bool success = fixJlsRegNameAtList(strNameWrite, lenFullVar, true);		// exact=true
+	if (dbg_watch){
+		DBG_OPSEC("[setJlsRegVarWithLocal] after fixJlsRegNameAtList: strNameWrite=\"%s\" success=%d\n",
+			strNameWrite.c_str(), (int)success);
+	}
 	//--- 書き込み処理 ---
 	if ( success ){
 		success = pGlobalState->setRegVarCommon(strNameWrite, strVal, overwrite, flagLocal);
 		setJlsRegVarCouple(strNameWrite, strVal);
+		if (dbg_watch){
+			DBG_OPSEC("[setJlsRegVarWithLocal] setRegVarCommon result=%d for strNameWrite=\"%s\" strVal=\"%s\"\n",
+				(int)success, strNameWrite.c_str(), strVal.c_str());
+		}
 	}
 	return success;
 }

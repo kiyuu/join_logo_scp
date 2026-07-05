@@ -9,6 +9,24 @@
 #include "JlsAutoScript.hpp"
 #include "JlsCmdSet.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
+#include <cstdarg>
+
+//=====================================================================
+// [DBG-INVESTIGATION] param_opsec/param_edsec 未反映調査用ログ（一時コード・マージ前に削除）
+//=====================================================================
+static FILE* g_jls_dbgfp_opsec_script = NULL;
+static void DBG_OPSEC(const char* fmt, ...){
+	if (g_jls_dbgfp_opsec_script == NULL){
+		g_jls_dbgfp_opsec_script = fopen("jls_debug_opsec.log", "a");
+		if (g_jls_dbgfp_opsec_script == NULL) return;
+	}
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(g_jls_dbgfp_opsec_script, fmt, ap);
+	va_end(ap);
+	fflush(g_jls_dbgfp_opsec_script);
+}
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -1827,6 +1845,8 @@ bool JlsScript::setCmdReg(JlsCmdArg& cmdarg, JlsScriptState& state){
 			{
 				ConfigVarType typePrm = (ConfigVarType) cmdarg.getValStrArg(1);
 				int val = cmdarg.getValStrArg(2);
+				DBG_OPSEC("[SetParam] rawArg1=\"%s\" rawArg2=\"%s\" typePrm(int)=%d val=%d\n",
+					cmdarg.getStrArg(1).c_str(), cmdarg.getStrArg(2).c_str(), (int)typePrm, val);
 				pdata->setConfig(typePrm, val);
 			}
 			break;
