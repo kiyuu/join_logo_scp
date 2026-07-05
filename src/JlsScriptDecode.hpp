@@ -494,6 +494,12 @@ const vector<ConfigDataRecord> ConfigDefine = {
 	{ "ZoneFirst"    , ConfigVarType::msecZoneFirst,       ConvStrType::MsecM1 },
 	{ "ZoneLast"     , ConfigVarType::msecZoneLast,        ConvStrType::MsecM1 },
 	{ "LvPosFirst"   , ConfigVarType::priorityPosFirst,    ConvStrType::Num    },
+	{ "SlotMin"      , ConfigVarType::scSlotMin,           ConvStrType::Num    },
+	{ "OpSec"        , ConfigVarType::scOpSec,             ConvStrType::Num    },
+	{ "EdSec"        , ConfigVarType::scEdSec,             ConvStrType::Num    },
+	{ "CutTailLogo"  , ConfigVarType::scCutTail,           ConvStrType::Num    },
+	{ "SlotKeep"     , ConfigVarType::scSlotKeep,          ConvStrType::Num    },
+	{ "CutHead0L"    , ConfigVarType::scCutHead0L,         ConvStrType::Num    },
 };
 //--- オプションの未指定時複写 ---
 // （対象コマンド、複写先オプション、複写元オプション）

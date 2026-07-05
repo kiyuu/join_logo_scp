@@ -342,6 +342,7 @@ public:
 	void setOutDirect(vector<Msec>& listMsec);
 // 出力作成
 	void outputResultTrimGen();
+	void splitMainBySC();
 	void outputResultDetailReset();
 	bool outputResultDetailGetLine(string &strBuf);
 	void dispSysMesN(const string& msg, SysMesType typeMsg);
