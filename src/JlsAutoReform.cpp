@@ -11,7 +11,27 @@
 #include "JlsAutoReform.hpp"
 #include "JlsCmdSet.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
+#include <cstdarg>
 
+//=====================================================================
+// [DBG-INVESTIGATION] param_opsec/param_edsec 80秒ペア未検出の原因調査用ログ
+//  出力: 実行フォルダに jls_debug_opsec.log を追記生成
+//  調査対象: setInterLogo / setInterLogoUpdate / setInterpolarExtra
+//  マージ前に必ず削除すること（本調査専用の一時コード）
+//=====================================================================
+static FILE* g_jls_dbgfp_opsec = NULL;
+static void DBG_OPSEC(const char* fmt, ...){
+	if (g_jls_dbgfp_opsec == NULL){
+		g_jls_dbgfp_opsec = fopen("jls_debug_opsec.log", "a");
+		if (g_jls_dbgfp_opsec == NULL) return;
+	}
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(g_jls_dbgfp_opsec, fmt, ap);
+	va_end(ap);
+	fflush(g_jls_dbgfp_opsec);
+}
 
 //=====================================================================
 // 推測構成に必要な事前設定
@@ -2333,6 +2353,11 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 	bool rev_del_mid  = (pdata->getConfigAction(ConfigActType::LogoDelMid))? true : false;
 	//--- 15秒単位の構成検出 ---
 	bool det = false;
+	{
+		RangeMsec bounds_dbg = getRangeMsec(nscbounds);
+		DBG_OPSEC("[setInterLogo] ENTER nscbounds.st=%d nscbounds.ed=%d msec.st=%d msec.ed=%d rev_del_mid=%d cm_inter=%d\n",
+			nscbounds.st, nscbounds.ed, bounds_dbg.st, bounds_dbg.ed, (int)rev_del_mid, (int)cm_inter);
+	}
 	if (rev_del_mid && cm_inter){		// 内部のCMを検出
 		//--- 範囲設定 ---
 		RangeMsec bounds = getRangeMsec(nscbounds);
@@ -2347,10 +2372,13 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 		bool logo1st = true;
 		bool logointer = true;
 		det = setCMForm(rmsec_dmy, cmscope, logo1st, logointer);
+		DBG_OPSEC("[setInterLogo] setCMForm det=%d\n", (int)det);
 	}
 	//--- ロゴ区間設定 ---
 	if (det == false){		// 間にCMがなければ全体の構成推測
 		bool logomode = true;
+		DBG_OPSEC("[setInterLogo] branch=WHOLE calling setInterpolar nscbounds.st=%d nscbounds.ed=%d\n",
+			nscbounds.st, nscbounds.ed);
 		det = setInterpolar(nscbounds, logomode);
 	}
 	else{					// 間にCMがあればCMを除いて構成推測
@@ -2359,6 +2387,8 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 		RangeNsc nscope = nscbounds;
 		if (nscope.st < 0) nscope.st = pdata->getNscNextScpChap(0, SCP_CHAP_DECIDE);
 		if (nscope.ed < 0) nscope.ed = pdata->getNscPrevScpChap(num_scpos-1, SCP_CHAP_DECIDE);
+		DBG_OPSEC("[setInterLogo] branch=SPLIT nscope.st=%d nscope.ed=%d (CM detected inside, will fragment into sub-ranges)\n",
+			nscope.st, nscope.ed);
 		//--- CM構成検出 ---
 		RangeNsc cmterm = {-1, -1};	// CM化開始終了位置
 		int count    = 0;			// CM化構成数カウント
@@ -2379,6 +2409,8 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 				}
 				//--- 短期間ロゴ区間は（端以外は）CM扱いとする ---
 				bool shortcm = (nsc_fin == nscope.st)? false : true;
+				DBG_OPSEC("[setInterLogo/SPLIT] nsc_last=%d(msec=%d) nsc_cur=%d(msec=%d) det15s=%d type1=%d calc1.sec=%d\n",
+					nsc_last, (int)msec_last, nsc_cur, (int)msec_cur, (int)det15s, type1, calc1.sec);
 				//--- CM構成を検出時 ---
 				if (det15s && type1 == 2){
 					if (count == 0) cmterm.st = nsc_last;
@@ -2396,6 +2428,8 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 								CalcDifInfo calc2;
 								calcDifSelect(calc2, msec_st, msec_ed);
 								if (calc2.sec % 30 == 0){		// 30秒単位の時に認識
+									DBG_OPSEC("[setInterLogo/SPLIT] -> setInterLogoUpdate nsc_fin=%d(msec=%d) cmterm.st=%d(msec=%d) cmterm.ed=%d(msec=%d)\n",
+										nsc_fin, (int)pdata->getMsecScp(nsc_fin), cmterm.st, msec_st, cmterm.ed, (int)pdata->getMsecScp(cmterm.ed));
 									setInterLogoUpdate(nsc_fin, cmterm, shortcm);
 									det = true;
 								}
@@ -2408,6 +2442,8 @@ bool JlsAutoReform::setInterLogo(RangeNsc nscbounds, bool cm_inter){
 				//--- 最終位置の処理 ---
 				if (nsc_cur == nscope.ed){
 					cmterm = {nsc_cur, nsc_cur};		// 期間なしで最終位置をセット
+					DBG_OPSEC("[setInterLogo/SPLIT] -> setInterLogoUpdate(FINAL) nsc_fin=%d(msec=%d) cmterm.st=cmterm.ed=%d(msec=%d)\n",
+						nsc_fin, (int)pdata->getMsecScp(nsc_fin), nsc_cur, (int)pdata->getMsecScp(nsc_cur));
 					bool det_tmp = setInterLogoUpdate(nsc_fin, cmterm, shortcm);
 					if (det_tmp) det = true;
 				}
@@ -2448,6 +2484,8 @@ bool JlsAutoReform::setInterLogoUpdate(Nsc nsc_fin, RangeNsc cmterm, bool shortc
 		//--- 補完処理 ---
 		bool logomode = true;
 		RangeNsc rnsc_target = {nsc_fin, cmterm.st};
+		DBG_OPSEC("[setInterLogoUpdate] calling setInterpolar rnsc_target.st=%d(msec=%d) rnsc_target.ed=%d(msec=%d)\n",
+			rnsc_target.st, (int)pdata->getMsecScp(rnsc_target.st), rnsc_target.ed, (int)pdata->getMsecScp(rnsc_target.ed));
 		det = setInterpolar(rnsc_target, logomode);			// 内部構成推測
 	}
 	//--- CM化処理 ---
@@ -2864,6 +2902,8 @@ bool JlsAutoReform::setInterpolarDetect(TraceInterpolar &trace, Nsc nsc_cur, Ran
 //---------------------------------------------------------------------
 bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 	int num_scpos = pdata->sizeDataScp();
+	DBG_OPSEC("[setInterpolarExtra] ENTER target.nsc.st=%d(msec=%d) target.nsc.ed=%d(msec=%d) logomode=%d\n",
+		target.nsc.st, (int)target.msec.st, target.nsc.ed, (int)target.msec.ed, (int)logomode);
 	//--- 追加検出するか確認（1=ロゴ90秒検出、2=CM分割、3=CM分割しないCM）
 	int type = (logomode)? 1 : 0;
 	if (logomode == false && target.nsc.st > 0 && target.nsc.ed < num_scpos-1){
@@ -2886,39 +2926,64 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 		Sec sec_op = pdata->getConfig(ConfigVarType::scOpSec);
 		if (sec_ed > 0) list_unitsec.push_back(sec_ed);
 		if (sec_op > 0 && sec_op != sec_ed) list_unitsec.push_back(sec_op);
+		{
+			char buf[256]; int off=0;
+			off += snprintf(buf+off, sizeof(buf)-off, "[setInterpolarExtra] type=%d list_unitsec=[", type);
+			for (size_t z=0; z<list_unitsec.size(); z++) off += snprintf(buf+off, sizeof(buf)-off, "%d,", list_unitsec[z]);
+			snprintf(buf+off, sizeof(buf)-off, "]\n");
+			DBG_OPSEC("%s", buf);
+		}
 	}
 	//--- ロゴ内単位認識（従来のロゴ90秒認識を構成長設定値で一般化） ---
 	if (type == 1){
 		for(Nsc i=target.nsc.st+1; i<=target.nsc.ed; i++){
 			bool flag_search = true;
 			int msec_i = pdata->getMsecScp(i);
+			bool flag_search_dbg_end = false, flag_search_dbg_near = false;
 			//--- 終了端近くは認識しない ---
 			if (abs(msec_i - target.msec.ed) <= pdata->msecValLap2 && i != target.nsc.ed){
 				flag_search = false;
+				flag_search_dbg_end = true;
 			}
 			//--- 近くに確定箇所がある場合は除く処理 ---
 			if (flag_search){
 				Nsc nsc_tmp = pdata->getNscFromMsecChap(msec_i, pdata->msecValLap2, SCP_CHAP_DECIDE);
 				if (nsc_tmp >= 0 && nsc_tmp != i){
 					flag_search = false;
+					flag_search_dbg_near = true;
 				}
+			}
+			if (msec_i >= 1600000 && msec_i <= 1800000){		// 調査対象区間(約1600-1800秒)に絞ってログ
+				DBG_OPSEC("[setInterpolarExtra/loop] i=%d msec_i=%d flag_search=%d (end_excl=%d near_decide_excl=%d)\n",
+					i, msec_i, (int)flag_search, (int)flag_search_dbg_end, (int)flag_search_dbg_near);
 			}
 			//--- 単位秒構成を取得する処理（設定構成長ごと・最初に一致した長さのみ採用） ---
 			if (flag_search){
 			  for(int nu=0; nu < (int)list_unitsec.size(); nu++){
 				Sec  sec_unit  = list_unitsec[nu];
 				Msec msec_unit = sec_unit * 1000;
+				bool dbg_scope = (msec_i >= 1600000 && msec_i <= 1800000);
 				//--- 開始端近くは認識しない（従来: 89*1000 = 90秒-1秒） ---
-				if (abs(msec_i - target.msec.st) <= msec_unit - 1000) continue;
+				if (abs(msec_i - target.msec.st) <= msec_unit - 1000){
+					if (dbg_scope) DBG_OPSEC("[setInterpolarExtra/nu] i=%d msec_i=%d sec_unit=%d SKIP(near_start, target.msec.st=%d)\n",
+						i, msec_i, sec_unit, (int)target.msec.st);
+					continue;
+				}
 				//--- 単位秒前地点取得 ---
-				Nsc nsc_pts = pdata->getNscFromMsecChap(
+				Nsc nsc_pts_decide = pdata->getNscFromMsecChap(
 								msec_i - msec_unit, pdata->msecValLap2, SCP_CHAP_DECIDE);
+				Nsc nsc_pts = nsc_pts_decide;
 				if (nsc_pts < 0){		// 確定地点がなければそれ以外の地点
 					nsc_pts = pdata->getNscFromMsecChap(
 								msec_i - msec_unit, pdata->msecValLap2, SCP_CHAP_NONE);
 				}
+				if (dbg_scope){
+					DBG_OPSEC("[setInterpolarExtra/nu] i=%d msec_i=%d sec_unit=%d search_msec=%d nsc_pts(DECIDE)=%d nsc_pts(after_NONE_fallback)=%d\n",
+						i, msec_i, sec_unit, (int)(msec_i - msec_unit), nsc_pts_decide, nsc_pts);
+				}
 				//--- 間に無音シーンチェンジが２箇所ある場合は候補にしない ---
 				if (nsc_pts > 0 && (i - nsc_pts) > 2){
+					if (dbg_scope) DBG_OPSEC("[setInterpolarExtra/nu] i=%d sec_unit=%d REJECT(gap>2 silence-SCs: i-nsc_pts=%d)\n", i, sec_unit, i-nsc_pts);
 					nsc_pts = -1;
 				}
 				//--- 間に無音シーンチェンジが１箇所ある場合は候補とするか判断 ---
@@ -2936,20 +3001,29 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 					}
 					//--- 間が確定位置だった場合は処理しない ---
 					if (jlsd::isScpChapTypeDecide( pdata->getScpChap(nsc_tmp) )){
+						if (dbg_scope) DBG_OPSEC("[setInterpolarExtra/nu] i=%d sec_unit=%d REJECT(mid-point nsc_tmp=%d is DECIDE)\n", i, sec_unit, nsc_tmp);
 						nsc_pts = -1;
 					}
 					//--- 間が前後どちらの無音区間でもない場合処理しない ---
 					else if ((pdata->isSmuteSameArea(nsc_tmp, nsc_pts) == false) &&
 							 (pdata->isSmuteSameArea(nsc_tmp, i) == false) &&
 							 (flag_dist == false)){
+						if (dbg_scope) DBG_OPSEC("[setInterpolarExtra/nu] i=%d sec_unit=%d REJECT(mid-point nsc_tmp=%d not in same smute area either side)\n", i, sec_unit, nsc_tmp);
 						nsc_pts = -1;
 					}
+				}
+				if (dbg_scope){
+					DBG_OPSEC("[setInterpolarExtra/nu] i=%d sec_unit=%d nsc_pts(final)=%d\n", i, sec_unit, nsc_pts);
 				}
 				if (nsc_pts > 0){
 					Nsc  nsc_pte = i;
 					Msec msec_pts = pdata->getMsecScp(nsc_pts);
 					Msec msec_pte = msec_i;
 					Sec  sec_dif = pdata->cnv.getSecFromMsec(abs(msec_pte - msec_pts));
+					if (dbg_scope){
+						DBG_OPSEC("[setInterpolarExtra/nu] i=%d sec_unit=%d nsc_pts=%d(msec=%d) msec_pte=%d sec_dif=%d MATCH=%d\n",
+							i, sec_unit, nsc_pts, (int)msec_pts, (int)msec_pte, sec_dif, (int)(sec_dif==sec_unit));
+					}
 					if (sec_dif == sec_unit){
 						//--- 単位秒構成の位置確定処理 ---
 						ScpChapType chap_pts = pdata->getScpChap(nsc_pts);		// 開始地点
