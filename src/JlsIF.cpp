@@ -129,6 +129,7 @@ int JlsIF::runScript() {
 
 	//--- 結果出力 ---
 	if (errnum == 0) {
+		pdata->splitMainBySC();				// 地続き本編を主要SCで分割(ScDivMin>0時)
 		outputResultTrim(m_outfile);			// Trim情報出力
 		outputResultDetail(m_outscpfile);		// 構成情報出力
 		outputResultDiv(m_outdivfile);		// 分割情報出力

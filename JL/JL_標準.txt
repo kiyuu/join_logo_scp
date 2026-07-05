@@ -15,6 +15,14 @@ Default param_lgcut_first  12.0   # 最初からロゴありの時開始マー�
 Default param_wcomp_last   30.5   # 最後構成ロゴなし扱いとする最大期間
 Default param_zone_last    0.0    # 最後から指定期間内に全体が収まる構成はロゴなし扱いとする（-1の時は最後構成の分解を抑制）
 
+#--- 番組構造ベースの処理（DESIGN.md。既定は従来動作） ---
+Default param_opsec       90     # OP長（ロゴ内単位認識の構成長秒。90=従来動作と同一）
+Default param_edsec       90     # ED長（ロゴ内単位認識の構成長秒。90=従来動作と同一）
+Default param_slotmin     0      # 枠長(分)。地続きの枠境界分割（0:OFF）
+Default param_cuttaillogo 0      # 最終ロゴ終端以降のロゴ無し末尾を除去（0:OFF 1:ON）
+Default param_cuthead0l   0      # 先頭0開始Lを除去（0:OFF 1:ON）
+Default param_slotkeep    0      # 残す区画番号（0:全部残す 1:先頭区画 2:次区画…）
+
 #----------------------------------------------
 # 番組構成から判断するカット位置設定
 #----------------------------------------------
@@ -164,6 +172,12 @@ SetParam WCompFirst  $param_wcomp_first
 SetParam LgCutFirst  $param_lgcut_first
 SetParam ZoneFirst   $param_zone_first
 SetParam ZoneLast    $param_zone_last
+SetParam OpSec       $param_opsec
+SetParam EdSec       $param_edsec
+SetParam SlotMin     $param_slotmin
+SetParam CutTailLogo $param_cuttaillogo
+SetParam CutHead0L   $param_cuthead0l
+SetParam SlotKeep    $param_slotkeep
 SetParam LvPosFirst  $param_lvpos_first
 SetParam PosFirst    $param_pos_first
 SetParam LogoLevel   $logo_level

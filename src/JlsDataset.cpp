@@ -53,6 +53,12 @@ void JlsDataset::initData(){
 	setConfig(ConfigVarType::msecZoneFirst       , -1   );
 	setConfig(ConfigVarType::msecZoneLast        , -1   );
 	setConfig(ConfigVarType::priorityPosFirst    , 0    );
+	setConfig(ConfigVarType::scSlotMin           , 0    );
+	setConfig(ConfigVarType::scOpSec             , 90   );	// 既定90=従来のロゴ90秒認識と同値
+	setConfig(ConfigVarType::scEdSec             , 90   );	// 既定90=従来のロゴ90秒認識と同値
+	setConfig(ConfigVarType::scCutTail           , 0    );
+	setConfig(ConfigVarType::scCutHead0L         , 0    );
+	setConfig(ConfigVarType::scSlotKeep          , 0    );
 
 	//--- 外部設定オプション ---
 	extOpt = {};		// 念のため個別に初期化
@@ -3604,6 +3610,127 @@ void JlsDataset::outputResultTrimGenAuto(){
 		resultTrim.push_back( elg.msecFall );
 	}
 }
+
+// 番組構造ベースの処理 v1（既定OFF）: 先頭0Lカット / 末尾ロゴ後カット / 枠分割(区切り)
+//   詳細は DESIGN.md。
+void JlsDataset::splitMainBySC(){
+	int slotMin = getConfig(ConfigVarType::scSlotMin);
+	int cutTail = getConfig(ConfigVarType::scCutTail);
+	int cutHead = getConfig(ConfigVarType::scCutHead0L);
+	int slotKeep = getConfig(ConfigVarType::scSlotKeep);
+	if (slotMin <= 0 && cutTail <= 0 && cutHead <= 0 && slotKeep <= 0) return;
+	int nscp = sizeDataScp();
+	if (nscp < 2) return;
+
+	//--- 本編(elg)区間を列挙（変更前・共通）---
+	vector<RangeMsec> mains;
+	{
+		ElgCurrent elg = {};
+		elg.outflag = true;
+		while (getElgptNext(elg)){
+			RangeMsec r = { elg.msecRise, elg.msecFall };
+			mains.push_back(r);
+		}
+	}
+
+	//--- 先頭0開始Lカット（先頭本編がframe0付近から＝前番組ロゴ混入なら除去）---
+	if (cutHead > 0 && !mains.empty() && mains[0].st <= 100){
+		Msec fend = mains[0].ed;
+		//--- fend境界で終わる構成まで含めて除去（arstat[k]=kで終わる構成） ---
+		for (int k = 0; k < nscp; k++){
+			if (getMsecScp(k) > fend) break;
+			setScpArstat(k, SCP_AR_N_OTHER);
+		}
+	}
+
+	//--- 末尾ロゴ後カット（最後のロゴ終端以降のロゴ無し末尾を除去）---
+	//   DESIGN.md §4.4: 例) ロゴ終端100963 → …-100966 :L(残) / 100967-EOF カット
+	//   注: arstat[k]は「kで終わる構成」の種別（getNscDirElgForAll先頭のコメント参照）。
+	//       cut位置のarstatは「cutで終わる構成」＝残す側の末尾ロゴ本編なので触らない(:Lのまま)。
+	//       カット対象(cutより後ろで終わる構成)は k=cut+1 以降に書く。
+	if (cutTail > 0){
+		Nlg nlgLast = sizeDataLogo() - 1;
+		if (nlgLast >= 0){
+			Msec msecFall = getMsecLogoFall(nlgLast);
+			//--- ロゴ終端以降で最初の非静止SCをカット位置に ---
+			int cut = -1;
+			for (int k = 0; k < nscp; k++){
+				if (getMsecScp(k) < msecFall) continue;
+				if (getScpStill(k)) continue;
+				cut = k; break;
+			}
+			//--- ロゴ終端で区切り、終端より後の構成を除去 ---
+			//   cutは新設境界のためarstat未設定(UNKNOWN)。区切り挿入時は
+			//   「その境界で終わる構成」の種別設定が必須（DESIGN.md §2の規約）。
+			if (cut > 0){
+				setScpChap(cut, SCP_CHAP_DUNIT);
+				setScpArstat(cut, SCP_AR_L_OTHER);		// cutで終わる構成＝末尾ロゴ本編(:L)
+				for (int k = cut+1; k < nscp; k++) setScpArstat(k, SCP_AR_N_OTHER);
+			}
+		}
+	}
+
+	//--- 分割アンカー（区画境界）。SlotKeep の区画番号判定に使用（DESIGN.md §4.5）---
+	vector<Msec> listAnchor;
+
+	//--- 枠分割（区切るだけ・除去しない。ゾーン秒は層Aへ移管しzones連鎖は廃止）---
+	if (slotMin > 0){
+		Msec total = getMsecScp(nscp - 1);
+		Msec slotMs = (Msec)((long long)slotMin * 60 * 1000);
+		const Msec winAnchor = 15000;
+		//--- 窓内で無音長最大の非静止SCを選ぶ（番組境界は無音が長い）---
+		auto bestSilence = [&](Msec target, Msec win, Msec lo, Msec hi)->int{
+			int best = -1; Msec bs = -1; Msec bd = win + 1;
+			for (int k = 0; k < nscp; k++){
+				Msec p = getMsecScp(k);
+				if (p <= lo || p >= hi) continue;
+				if (getScpStill(k)) continue;
+				Msec dd = (p > target)? p - target : target - p;
+				if (dd > win) continue;
+				Msec sil = m_scp[k].msmute_e - m_scp[k].msmute_s;
+				if (sil < 0) sil = 0;
+				if (sil > bs || (sil == bs && dd < bd)){ bs = sil; bd = dd; best = k; }
+			}
+			return best;
+		};
+		for (Msec G = slotMs; G < total; G += slotMs){
+			Msec posAnchor = G;					// 境界を置けない場合は生アンカー位置
+			int mi = -1;
+			for (int m = 0; m < (int)mains.size(); m++){
+				if (G > mains[m].st && G < mains[m].ed){ mi = m; break; }
+			}
+			if (mi >= 0){
+				int cur = bestSilence(G, winAnchor, mains[mi].st, mains[mi].ed);
+				if (cur >= 0){
+					//--- 新設区切り: 区切りで終わる構成の種別設定とセット（arstat[k]=kで終わる構成）---
+					setScpArstat(cur, SCP_AR_L_OTHER);
+					setScpChap(cur, SCP_CHAP_DUNIT);
+					posAnchor = getMsecScp(cur);
+				}
+			}
+			listAnchor.push_back(posAnchor);
+		}
+	}
+
+	//--- 残す枠選択（DESIGN.md §4.5。指定区画の外で終わる構成を除去）---
+	if (slotKeep > 0 && !listAnchor.empty()){
+		std::sort(listAnchor.begin(), listAnchor.end());
+		int numSeg = (int)listAnchor.size() + 1;
+		if (slotKeep <= numSeg){					// 区画数超えは何もしない（安全側）
+			Msec msecLo = (slotKeep >= 2)? listAnchor[slotKeep-2] : -1;
+			Msec msecHi = (slotKeep <= (int)listAnchor.size())? listAnchor[slotKeep-1] : -1;
+			for (int k = 0; k < nscp; k++){
+				Msec p = getMsecScp(k);
+				if (msecLo >= 0 && p <= msecLo) setScpArstat(k, SCP_AR_N_OTHER);
+				if (msecHi >= 0 && p >  msecHi) setScpArstat(k, SCP_AR_N_OTHER);
+			}
+		}
+	}
+}
+
+
+
+
 
 
 
