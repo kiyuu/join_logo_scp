@@ -7,6 +7,24 @@
 #include "JlsAutoReform.hpp"
 #include "JlsCmdSet.hpp"
 #include "JlsDataset.hpp"
+#include <cstdio>
+#include <cstdarg>
+
+//=====================================================================
+// [DBG-INVESTIGATION] mkReformAll早期発火の特定用ログ（一時コード・マージ前に削除）
+//=====================================================================
+static FILE* g_jls_dbgfp_opsec_auto = NULL;
+static void DBG_OPSEC(const char* fmt, ...){
+	if (g_jls_dbgfp_opsec_auto == NULL){
+		g_jls_dbgfp_opsec_auto = fopen("jls_debug_opsec.log", "a");
+		if (g_jls_dbgfp_opsec_auto == NULL) return;
+	}
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(g_jls_dbgfp_opsec_auto, fmt, ap);
+	va_end(ap);
+	fflush(g_jls_dbgfp_opsec_auto);
+}
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -412,6 +430,8 @@ bool JlsAutoScript::startCmd(JlsCmdSet &cmdset, bool setup_only){
 void JlsAutoScript::checkFirstAct(JlsCmdArg &cmdarg){
 	//--- 初回のみ実行 ---
 	if ( pdata->isAutoModeInitial() ){
+		DBG_OPSEC("[checkFirstAct] *** mkReformAll TRIGGERED HERE *** cmdsel(int)=%d category(int)=%d\n",
+			(int)cmdarg.cmdsel, (int)cmdarg.category);
 		//--- 推測構成を作成 ---
 		pdata->setFlagAutoMode(true);				// Auto系を有効
 		JlsAutoReform func_reform(pdata);
