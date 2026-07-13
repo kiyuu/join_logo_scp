@@ -342,6 +342,8 @@ public:
 	void setOutDirect(vector<Msec>& listMsec);
 // 出力作成
 	void outputResultTrimGen();
+	void splitMainBySC();
+	void calcSlotAnchors(vector<Msec>& listAnchor);
 	void outputResultDetailReset();
 	bool outputResultDetailGetLine(string &strBuf);
 	void dispSysMesN(const string& msg, SysMesType typeMsg);
@@ -351,6 +353,7 @@ public:
 	int  getMsecTotalMax(){ return m_msecTotalMax; };
 	bool isRangeInTotalMax(Msec ms){ return (ms >= 0 && ms <= getMsecTotalMax()); };
 
+	vector<Msec>	listSlotAnchorCache;	// $SLOTANCHOR読み出しで確定したアンカー(splitMainBySCと共有)
 	CnvStrTime		cnv;				// 変換処理
 	JlsDataset		*pdata;				// 自分自身へのポインタ
 
