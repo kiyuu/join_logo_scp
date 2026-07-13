@@ -2879,14 +2879,21 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 		}
 	}
 	bool update = false;
-	//--- ロゴ90秒認識 ---
+	//--- ロゴ内単位認識の構成長リスト（OP/ED長設定、既定90=従来のロゴ90秒認識と同一動作） ---
+	vector<Sec> list_unitsec;
+	{
+		Sec sec_ed = pdata->getConfig(ConfigVarType::scEdSec);
+		Sec sec_op = pdata->getConfig(ConfigVarType::scOpSec);
+		if (sec_ed > 0) list_unitsec.push_back(sec_ed);
+		if (sec_op > 0 && sec_op != sec_ed) list_unitsec.push_back(sec_op);
+	}
+	//--- ロゴ内単位認識（従来のロゴ90秒認識を構成長設定値で一般化） ---
 	if (type == 1){
 		for(Nsc i=target.nsc.st+1; i<=target.nsc.ed; i++){
 			bool flag_search = true;
 			int msec_i = pdata->getMsecScp(i);
-			//--- 端近くは認識しない ---
-			if ((abs(msec_i - target.msec.st) <= 89 * 1000) ||
-				(abs(msec_i - target.msec.ed) <= pdata->msecValLap2 && i != target.nsc.ed)){
+			//--- 終了端近くは認識しない ---
+			if (abs(msec_i - target.msec.ed) <= pdata->msecValLap2 && i != target.nsc.ed){
 				flag_search = false;
 			}
 			//--- 近くに確定箇所がある場合は除く処理 ---
@@ -2896,14 +2903,19 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 					flag_search = false;
 				}
 			}
-			//--- 90秒構成を取得する処理 ---
+			//--- 単位秒構成を取得する処理（設定構成長ごと・最初に一致した長さのみ採用） ---
 			if (flag_search){
-				//--- 90秒前地点取得 ---
+			  for(int nu=0; nu < (int)list_unitsec.size(); nu++){
+				Sec  sec_unit  = list_unitsec[nu];
+				Msec msec_unit = sec_unit * 1000;
+				//--- 開始端近くは認識しない（従来: 89*1000 = 90秒-1秒） ---
+				if (abs(msec_i - target.msec.st) <= msec_unit - 1000) continue;
+				//--- 単位秒前地点取得 ---
 				Nsc nsc_pts = pdata->getNscFromMsecChap(
-								msec_i - 90000, pdata->msecValLap2, SCP_CHAP_DECIDE);
+								msec_i - msec_unit, pdata->msecValLap2, SCP_CHAP_DECIDE);
 				if (nsc_pts < 0){		// 確定地点がなければそれ以外の地点
 					nsc_pts = pdata->getNscFromMsecChap(
-								msec_i - 90000, pdata->msecValLap2, SCP_CHAP_NONE);
+								msec_i - msec_unit, pdata->msecValLap2, SCP_CHAP_NONE);
 				}
 				//--- 間に無音シーンチェンジが２箇所ある場合は候補にしない ---
 				if (nsc_pts > 0 && (i - nsc_pts) > 2){
@@ -2938,8 +2950,8 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 					Msec msec_pts = pdata->getMsecScp(nsc_pts);
 					Msec msec_pte = msec_i;
 					Sec  sec_dif = pdata->cnv.getSecFromMsec(abs(msec_pte - msec_pts));
-					if (sec_dif == 90){
-						//--- 90秒構成の位置確定処理 ---
+					if (sec_dif == sec_unit){
+						//--- 単位秒構成の位置確定処理 ---
 						ScpChapType chap_pts = pdata->getScpChap(nsc_pts);		// 開始地点
 						ScpChapType chap_pte = pdata->getScpChap(nsc_pte);		// 終了地点
 						if (chap_pts < SCP_CHAP_DECIDE){
@@ -2952,7 +2964,7 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 							pdata->setScpArstat(nsc_pte, SCP_AR_L_OTHER);
 							update = true;
 						}
-						//--- 90秒から5秒または10秒離れた構成も追加 ---
+						//--- 単位秒から5秒または10秒離れた構成も追加 ---
 						Nsc nsc_a05 = pdata->getNscFromMsecChap(
 										msec_pte+5000,  pdata->msecValNear1, SCP_CHAP_NONE);
 						Nsc nsc_a10 = pdata->getNscFromMsecChap(
@@ -2973,8 +2985,10 @@ bool JlsAutoReform::setInterpolarExtra(RangeNscMsec target, bool logomode){
 								update = true;
 							}
 						}
+						break;		// この位置では最初に一致した構成長のみ
 					}
 				}
+			  }
 			}
 		}
 	}
@@ -5206,9 +5220,17 @@ int JlsAutoReform::calcDifSelect(CalcDifInfo &calcdif, Msec msec_src, Msec msec_
 	Sec  sec_dif = pdata->cnv.getSecFromMsec(msec_dif);
 	Msec gap_dif = abs(sec_dif * 1000 - msec_dif);
 	int type = 0;
-	if (gap_dif <= msec_val_near2 &&
-		(sec_dif == 10 || sec_dif == 15 || sec_dif == 30 || sec_dif == 45 ||
-		 sec_dif == 60 || sec_dif == 90 || sec_dif == 120)){
+	bool unit_std = (sec_dif == 10 || sec_dif == 15 || sec_dif == 30 || sec_dif == 45 ||
+					 sec_dif == 60 || sec_dif == 90 || sec_dif == 120);
+	//--- 設定されたOP/ED構成長も認識（既定90は上記に含まれるため動作不変） ---
+	if (unit_std == false){
+		Sec sec_op = pdata->getConfig(ConfigVarType::scOpSec);
+		Sec sec_ed = pdata->getConfig(ConfigVarType::scEdSec);
+		if ((sec_op > 0 && sec_dif == sec_op) || (sec_ed > 0 && sec_dif == sec_ed)){
+			unit_std = true;
+		}
+	}
+	if (gap_dif <= msec_val_near2 && unit_std){
 		type = 2;
 	}
 	else if (gap_dif <= msec_val_near1 &&

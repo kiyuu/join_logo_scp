@@ -555,6 +555,23 @@ int JlsScrFuncReg::getJlsRegVarPartName(string& strVal, const string& strCandNam
 //   strVal  : 変数値
 //---------------------------------------------------------------------
 int JlsScrFuncReg::getJlsRegVar(string& strVal, const string& strCandName, bool exact){
+	//--- SLOTANCHOR: SlotMinアンカーのオンデマンド計算（初回読み出しで確定・以後キャッシュ）---
+	//    値は昇順の時刻リスト（GetListと同形式）。SetParam SlotMin 設定後に読むこと。
+	{
+		int ofsAnc = ( !strCandName.empty() && strCandName[0]=='#' )? 1 : 0;
+		if ( (int)strCandName.length() >= ofsAnc+10 &&
+		     strCandName.compare(ofsAnc, 10, "SLOTANCHOR") == 0 ){
+			if ( pdata->listSlotAnchorCache.empty() ){
+				pdata->calcSlotAnchors(pdata->listSlotAnchorCache);
+			}
+			string strListAnc;
+			for(int i=0; i<(int)pdata->listSlotAnchorCache.size(); i++){
+				if (i > 0) strListAnc += ",";
+				strListAnc += pdata->cnv.getStringTimeMsecM1(pdata->listSlotAnchorCache[i]);
+			}
+			setJlsRegVar("SLOTANCHOR", strListAnc, true);
+		}
+	}
 	//--- 分離オプションチェック ---
 	string strNamePart = strCandName;
 	string strDivPart;
