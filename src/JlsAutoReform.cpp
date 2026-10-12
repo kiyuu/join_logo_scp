@@ -192,7 +192,9 @@ void JlsAutoReform::mkReformAllLogo(){
 			//--- CM構成を作成 ---
 			int  interfill = 1;			// 複数のCM構成では間もCM
 			RangeMsec bounds;
+			Msec msec_lg_remain_before = msec_lg_remain_st;
 			bool det = mkRangeCM(bounds, scope, logoon_st, interfill);
+			bool det_cm = det;
 			//--- 最終位置のロゴ有無判断 ---
 			if (flagend == true && det){
 				if (logopt.msecFall < bounds.ed + pdata->msecValLap2){
@@ -219,6 +221,12 @@ void JlsAutoReform::mkReformAllLogo(){
 			else if (det == false){
 				det = mkReformAllLogoUnit(msec_lg_remain_st, logopt);
 			}
+			lcout << "[JLS_TRACE][AutoCM]"
+			      << " logo=[" << logopt.msecRise << "," << logopt.msecFall << "]"
+			      << " scope=[" << scope.st << "," << scope.ed << "]"
+			      << " bounds=[" << bounds.st << "," << bounds.ed << "]"
+			      << " detCM=" << det_cm << " detFinal=" << det
+			      << " remain=[" << msec_lg_remain_before << "," << msec_lg_remain_st << "]" << endl;
 			//--- CM認識またはロゴ期間が長い場合は次の開始をロゴ終了位置に設定 ---
 			Msec msec_recmin = pdata->getConfig(ConfigVarType::msecWLogoLgMin);
 			if (flagend == false && (det || (logopt.msecFall - logopt.msecRise) >= msec_recmin)){

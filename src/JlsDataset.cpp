@@ -3821,6 +3821,12 @@ bool JlsDataset::outputResultDetailGetLine(string &strBuf){
 		//--- 構成名称を取得 ---
 		if (m_flagSetupAuto > 1){
 			outputResultDetailGetLineLabel(strBuf, getScpArstat(i), getScpArext(i));
+			if (msec_from < 180000)
+				lcout << "[JLS_TRACE][FINAL] nsc=" << i
+					<< " interval=[" << msec_from << "," << msec_next << "]"
+					<< " arstat=" << static_cast<int>(getScpArstat(i))
+					<< " arext=" << static_cast<int>(getScpArext(i))
+					<< " output=" << strBuf << endl;
 		}
 		return 0;
 	}

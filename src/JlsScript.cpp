@@ -2329,7 +2329,18 @@ bool JlsScript::exeCmdLogoTarget(JlsCmdSet& cmdset){
 				}
 				// 新しい確定位置を設定
 				Msec msec_tmp = pdata->getMsecScp(nsc_scpos_sel);
+				WideMsec wmsec_before;
+				pdata->getWideMsecLogoNrf(wmsec_before, nrf);
+				lcout << "[JLS_TRACE][Select] nrf=" << nrf
+				      << " old=" << msec_nrf
+				      << " oldBounds=[" << wmsec_before.early << "," << wmsec_before.just << "," << wmsec_before.late << "]"
+				      << " selectedSC=" << msec_tmp << endl;
 				pdata->setMsecLogoNrf(nrf, msec_tmp);
+				WideMsec wmsec_after;
+				pdata->getWideMsecLogoNrf(wmsec_after, nrf);
+				lcout << "[JLS_TRACE][Select] nrf=" << nrf
+				      << " new=" << pdata->getMsecLogoNrf(nrf)
+				      << " newBounds=[" << wmsec_after.early << "," << wmsec_after.just << "," << wmsec_after.late << "]" << endl;
 				pdata->setScpStatpos(nsc_scpos_sel, SCP_PRIOR_DECIDE);
 				exe_command = true;
 				if (cmdset.arg.getOpt(OptType::FlagConfirm) > 0){
