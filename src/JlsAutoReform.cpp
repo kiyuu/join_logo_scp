@@ -1675,7 +1675,7 @@ bool JlsAutoReform::setFirstArea(FormFirstInfo &info_first){
 			locinfo.msecWcomp1st = 30 * 1000;			// 初期設定
 		}
 		//--- 検索終了位置 ---
-		locinfo.msecEnd1st = 30 * 1000 + pdata->msecValLap2;
+		locinfo.msecEnd1st = 45 * 1000 + pdata->msecValLap2;
 		if (locinfo.msec1stSel > 0){
 			locinfo.msecEnd1st += locinfo.msec1stSel;
 		}
