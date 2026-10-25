@@ -116,7 +116,7 @@ void JlsDataset::initData(){
 	msecValNear2 = 400;
 	msecValNear3 = 1200;
 	msecValLap1  = 700;
-	msecValLap2  = 2500;
+	msecValLap2  = 8700;
 	msecValSpc   = 1200;
 };
 
